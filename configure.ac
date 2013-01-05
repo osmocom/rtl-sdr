@@ -65,7 +65,7 @@ AC_TRY_COMPILE([],[],
   CFLAGS="$old_CFLAGS")
 
 dnl Generate the output
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADER(config.h)
 
 AC_OUTPUT(
 	librtlsdr.pc
