@@ -80,6 +80,7 @@ static rtlsdr_dev_t *dev = NULL;
 
 int global_numq = 0;
 static struct llist *ll_buffers = 0;
+int llbuf_num=500;
 
 static int do_exit = 0;
 
@@ -92,6 +93,7 @@ void usage(void)
 		"\t[-g gain (default: 0 for auto)]\n"
 		"\t[-s samplerate in Hz (default: 2048000 Hz)]\n"
 		"\t[-b number of buffers (default: 32, set by library)]\n"
+		"\t[-n max number of linked list buffers to keep (default: 500)]\n"
 		"\t[-d device index (default: 0)]\n");
 	exit(1);
 }
@@ -157,6 +159,16 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 				cur = cur->next;
 				num_queued++;
 			}
+
+			if(llbuf_num && llbuf_num == num_queued-2){
+				struct llist *curelem;
+
+				free(ll_buffers->data);
+				curelem = ll_buffers->next;
+				free(ll_buffers);
+				ll_buffers = curelem;
+			}
+
 			cur->next = rpt;
 
 			if (num_queued > global_numq)
@@ -397,7 +409,7 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:d:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = atoi(optarg);
@@ -419,6 +431,9 @@ int main(int argc, char **argv)
 			break;
 		case 'b':
 			buf_num = atoi(optarg);
+			break;
+		case 'n':
+			llbuf_num = atoi(optarg);
 			break;
 		default:
 			usage();
