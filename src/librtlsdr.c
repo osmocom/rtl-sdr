@@ -1657,11 +1657,12 @@ int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 	}
 
 	/* if called while in pending state, change the state forcefully */
+#if 0
 	if (RTLSDR_INACTIVE != dev->async_status) {
 		dev->async_status = RTLSDR_INACTIVE;
 		return 0;
 	}
-
+#endif
 	return -2;
 }
 
