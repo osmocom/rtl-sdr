@@ -1330,7 +1330,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	r = libusb_open(device, &dev->devh);
 	if (r < 0) {
 		libusb_free_device_list(list, 1);
-		fprintf(stderr, "usb_open error %s\n", libusb_error_name(r));
+		fprintf(stderr, "usb_open error %d\n", r);
 		if(r == LIBUSB_ERROR_ACCESS)
 			fprintf(stderr, "Please fix the device permissions, e.g. "
 			"by installing the udev rules file rtl-sdr.rules\n");
@@ -1341,8 +1341,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	r = libusb_claim_interface(dev->devh, 0);
 	if (r < 0) {
-		fprintf(stderr, "usb_claim_interface error %s\n",
-			libusb_error_name(r));
+		fprintf(stderr, "usb_claim_interface error %d\n", r);
 		goto err;
 	}
 
