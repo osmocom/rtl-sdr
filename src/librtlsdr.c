@@ -89,6 +89,7 @@ struct rtlsdr_dev {
 	int corr; /* ppm */
 	int gain; /* tenth dB */
 	struct e4k_state e4k_s;
+	int dev_lost;
 };
 
 void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
@@ -1309,6 +1310,8 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	libusb_init(&dev->ctx);
 
+	dev->dev_lost = 1;
+
 	cnt = libusb_get_device_list(dev->ctx, &list);
 
 	for (i = 0; i < cnt; i++) {
@@ -1358,6 +1361,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	}
 
 	rtlsdr_init_baseband(dev);
+	dev->dev_lost = 0;
 
 	/* Probe tuners */
 	rtlsdr_set_i2c_repeater(dev, 1);
@@ -1452,16 +1456,18 @@ int rtlsdr_close(rtlsdr_dev_t *dev)
 	if (!dev)
 		return -1;
 
-	/* block until all async operations have been completed (if any) */
-	while (RTLSDR_INACTIVE != dev->async_status) {
+	if(!dev->dev_lost) {
+		/* block until all async operations have been completed (if any) */
+		while (RTLSDR_INACTIVE != dev->async_status) {
 #ifdef _WIN32
-		Sleep(1);
+			Sleep(1);
 #else
-		usleep(1000);
+			usleep(1000);
 #endif
-	}
+		}
 
-	rtlsdr_deinit_baseband(dev);
+		rtlsdr_deinit_baseband(dev);
+	}
 
 	libusb_release_interface(dev->devh, 0);
 	libusb_close(dev->devh);
@@ -1501,10 +1507,11 @@ static void LIBUSB_CALL _libusb_callback(struct libusb_transfer *xfer)
 			dev->cb(xfer->buffer, xfer->actual_length, dev->cb_ctx);
 
 		libusb_submit_transfer(xfer); /* resubmit transfer */
-	} else if (LIBUSB_TRANSFER_CANCELLED == xfer->status) {
-		/* nothing to do */
-	} else {
-		/*fprintf(stderr, "transfer status: %d\n", xfer->status);*/
+	} else if (LIBUSB_TRANSFER_CANCELLED != xfer->status &&
+				LIBUSB_TRANSFER_COMPLETED != xfer->status) {
+		dev->dev_lost = 1;
+		rtlsdr_cancel_async(dev);
+		fprintf(stderr, "cb transfer status: %d, canceling...\n", xfer->status);
 	}
 }
 
@@ -1640,8 +1647,10 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 				}
 			}
 
-			if (RTLSDR_INACTIVE == next_status)
+			if (dev->dev_lost || RTLSDR_INACTIVE == next_status) {
+				libusb_handle_events_timeout(dev->ctx, &tv);
 				break;
+			}
 		}
 	}
 
