@@ -101,7 +101,10 @@ int e4000_init(void *dev) {
 	devt->e4k_s.rtl_dev = dev;
 	return e4k_init(&devt->e4k_s);
 }
-int e4000_exit(void *dev) { return 0; }
+int e4000_exit(void *dev) {
+	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
+	return e4k_standby(&devt->e4k_s, 1);
+}
 int e4000_set_freq(void *dev, uint32_t freq) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_tune_freq(&devt->e4k_s, freq);
@@ -177,7 +180,7 @@ int r820t_init(void *dev) {
 	r820t_SetStandardMode(dev, DVB_T_6M);
 	return r;
 }
-int r820t_exit(void *dev) { return 0; }
+int r820t_exit(void *dev) { return r820t_SetStandby(dev, 0); }
 int r820t_set_freq(void *dev, uint32_t freq) { return r820t_SetRfFreqHz(dev, freq); }
 int r820t_set_bw(void *dev, int bw) { return 0; }
 int r820t_set_gain(void *dev, int gain) { return R828_SetRfGain(dev, gain); }
@@ -360,7 +363,8 @@ uint8_t rtlsdr_i2c_read_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t reg)
 /* TODO clean this up again */
 int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val)
 {
-	return rtlsdr_i2c_write_reg((rtlsdr_dev_t*)e4k->rtl_dev, e4k->i2c_addr, reg, val);}
+	return rtlsdr_i2c_write_reg((rtlsdr_dev_t*)e4k->rtl_dev, e4k->i2c_addr, reg, val);
+}
 
 uint8_t e4k_reg_read(struct e4k_state *e4k, uint8_t reg)
 {

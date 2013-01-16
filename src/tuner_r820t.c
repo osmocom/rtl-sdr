@@ -2896,7 +2896,7 @@ R828_ErrCode R828_Standby(void *pTuner, R828_LoopThrough_Type R828_LoopSwitch)
 		return RT_Fail;
 
 	R828_I2C.RegAddr = 0x0F;
-	R828_I2C.Data    = 0x78;
+	R828_I2C.Data    = 0x68; /* was 0x78, which turns off CLK_Out */
 	if(I2C_Write(pTuner, &R828_I2C) != RT_Success)
 		return RT_Fail;
 

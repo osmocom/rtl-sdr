@@ -881,6 +881,19 @@ int e4k_dc_offset_gen_table(struct e4k_state *e4k)
 }
 
 /***********************************************************************
+ * Standby */
+
+/*! \brief Enable/disable standby mode
+ */
+int e4k_standby(struct e4k_state *e4k, int enable)
+{
+	e4k_reg_set_mask(e4k, E4K_REG_MASTER1, E4K_MASTER1_NORM_STBY,
+			 enable ? 0 : E4K_MASTER1_NORM_STBY);
+
+	return 0;
+}
+
+/***********************************************************************
  * Initialization */
 
 static int magic_init(struct e4k_state *e4k)

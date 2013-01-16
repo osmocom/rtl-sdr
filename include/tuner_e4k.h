@@ -199,6 +199,7 @@ struct e4k_state {
 };
 
 int e4k_init(struct e4k_state *e4k);
+int e4k_standby(struct e4k_state *e4k, int enable);
 int e4k_if_gain_set(struct e4k_state *e4k, uint8_t stage, int8_t value);
 int e4k_mixer_gain_set(struct e4k_state *e4k, int8_t value);
 int e4k_commonmode_set(struct e4k_state *e4k, int8_t value);
