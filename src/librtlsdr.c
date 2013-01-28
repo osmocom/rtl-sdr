@@ -229,7 +229,7 @@ typedef struct rtlsdr_dongle {
  * Please add your device here and send a patch to osmocom-sdr@lists.osmocom.org
  */
 static rtlsdr_dongle_t known_devices[] = {
-	{ 0x0bda, 0x2832, "Generic RTL2832U (e.g. hama nano)" },
+	{ 0x0bda, 0x2832, "Generic RTL2832U" },
 	{ 0x0bda, 0x2838, "ezcap USB 2.0 DVB-T/DAB/FM dongle" },
 	{ 0x0ccd, 0x00a9, "Terratec Cinergy T Stick Black (rev 1)" },
 	{ 0x0ccd, 0x00b3, "Terratec NOXON DAB/DAB+ USB dongle (rev 1)" },
