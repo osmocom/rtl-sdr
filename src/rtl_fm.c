@@ -672,6 +672,32 @@ void frequency_range(struct fm_state *fm, char *arg)
 	step[-1] = ':';
 }
 
+void fm_init(struct fm_state *fm)
+{
+	fm->freqs[0] = 100000000;
+	fm->sample_rate = DEFAULT_SAMPLE_RATE;
+	fm->squelch_level = 0;
+	fm->conseq_squelch = 20;
+	fm->terminate_on_squelch = 0;
+	fm->squelch_hits = 0;
+	fm->freq_len = 0;
+	fm->edge = 0;
+	fm->fir_enable = 0;
+	fm->prev_index = 0;
+	fm->post_downsample = 1;  // once this works, default = 4
+	fm->custom_atan = 0;
+	fm->deemph = 0;
+	fm->output_rate = -1;  // flag for disabled
+	fm->mode_demod = &fm_demod;
+	fm->pre_j = 0;
+	fm->pre_r = 0;
+	fm->now_r = 0;
+	fm->now_j = 0;
+	fm->prev_lpr_index = 0;
+	fm->deemph_a = 0;
+	fm->now_lpr = 0;
+}
+
 int main(int argc, char **argv)
 {
 #ifndef _WIN32
@@ -686,20 +712,7 @@ int main(int argc, char **argv)
 	int device_count;
 	int ppm_error = 0;
 	char vendor[256], product[256], serial[256];
-	fm.freqs[0] = 100000000;
-	fm.sample_rate = DEFAULT_SAMPLE_RATE;
-	fm.squelch_level = 0;
-	fm.conseq_squelch = 20;
-	fm.terminate_on_squelch = 0;
-	fm.freq_len = 0;
-	fm.edge = 0;
-	fm.fir_enable = 0;
-	fm.prev_index = 0;
-	fm.post_downsample = 1;  // once this works, default = 4
-	fm.custom_atan = 0;
-	fm.deemph = 0;
-	fm.output_rate = -1;  // flag for disabled
-	fm.mode_demod = &fm_demod;
+	fm_init(&fm);
 	sem_init(&data_ready, 0, 0);
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRD")) != -1) {
@@ -793,6 +806,11 @@ int main(int argc, char **argv)
 	}
 	/* quadruple sample_rate to limit to Δθ to ±π/2 */
 	fm.sample_rate *= fm.post_downsample;
+
+	if (fm.freq_len == 0) {
+		fprintf(stderr, "Please specify a frequency.\n");
+		exit(1);
+	}
 
 	if (fm.freq_len > 1) {
 		fm.terminate_on_squelch = 0;
