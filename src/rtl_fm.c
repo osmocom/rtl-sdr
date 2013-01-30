@@ -72,6 +72,10 @@ static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static int lcm_post[17] = {1,1,1,3,1,5,3,7,1,9,5,11,3,13,7,15,1};
 
+static int *atan_lut = NULL;
+static int atan_lut_size = 131072; /* 512 KB */
+static int atan_lut_coef = 8;
+
 struct fm_state
 {
 	int      now_r;
@@ -128,7 +132,7 @@ void usage(void)
 		"\t[-E sets lower edge tuning (default: center)]\n"
 		"\t[-N enables NBFM mode (default: on)]\n"
 		"\t[-W enables WBFM mode (default: off)]\n"
-		"\t (-N -s 170k -o 4 -A -r 32k -l 0 -D)\n"
+		"\t (-N -s 170k -o 4 -A fast -r 32k -l 0 -D)\n"
 		"\tfilename (a '-' dumps samples to stdout)\n"
 		"\t (omitting the filename also uses stdout)\n\n"
 		"Experimental options:\n"
@@ -142,7 +146,7 @@ void usage(void)
 		"\t[-R enables raw mode (default: off, 2x16 bit output)]\n"
 		"\t[-F enables high quality FIR (default: off/square)]\n"
 		"\t[-D enables de-emphasis (default: off)]\n"
-		"\t[-A enables high speed arctan (default: off)]\n\n"
+		"\t[-A std/fast/lut choose atan math (default: std)]\n\n"
 		"Produces signed 16 bit ints, use Sox or aplay to hear them.\n"
 		"\trtl_fm ... - | play -t raw -r 24k -e signed-integer -b 16 -c 1 -V1 -\n"
 		"\t             | aplay -r 24k -f S16_LE -t raw -c 1\n"
@@ -343,6 +347,57 @@ int polar_disc_fast(int ar, int aj, int br, int bj)
 	return fast_atan2(cj, cr);
 }
 
+int atan_lut_init()
+{
+	int i = 0;
+
+	atan_lut = malloc(atan_lut_size * sizeof(int));
+
+	for (i = 0; i < atan_lut_size; i++) {
+		atan_lut[i] = (int) (atan((double) i / (1<<atan_lut_coef)) / 3.14159 * (1<<14));
+	}
+
+	return 0;
+}
+
+int polar_disc_lut(int ar, int aj, int br, int bj)
+{
+	int cr, cj, x, x_abs;
+
+	multiply(ar, aj, br, -bj, &cr, &cj);
+
+	/* special cases */
+	if (cr == 0 || cj == 0) {
+		if (cr == 0 && cj == 0)
+			{return 0;}
+		if (cr == 0 && cj > 0)
+			{return 1 << 13;}
+		if (cr == 0 && cj < 0)
+			{return -(1 << 13);}
+		if (cj == 0 && cr > 0)
+			{return 0;}
+		if (cj == 0 && cr < 0)
+			{return 1 << 14;}
+	}
+
+	/* real range -32768 - 32768 use 64x range -> absolute maximum: 2097152 */
+	x = (cj << atan_lut_coef) / cr;
+	x_abs = abs(x);
+
+	if (x_abs >= atan_lut_size) {
+		/* we can use linear range, but it is not necessary */
+		return (cj > 0) ? 1<<13 : -1<<13;
+	}
+
+	if (x > 0) {
+		return (cj > 0) ? atan_lut[x] : atan_lut[x] - (1<<14);
+	} else {
+		return (cj > 0) ? (1<<14) - atan_lut[-x] : -atan_lut[-x];
+	}
+
+	return 0;
+}
+
 void fm_demod(struct fm_state *fm)
 {
 	int i, pcm;
@@ -350,12 +405,19 @@ void fm_demod(struct fm_state *fm)
 		fm->pre_r, fm->pre_j);
 	fm->signal2[0] = (int16_t)pcm;
 	for (i = 2; i < (fm->signal_len); i += 2) {
-		if (fm->custom_atan) {
-			pcm = polar_disc_fast(fm->signal[i], fm->signal[i+1],
-				fm->signal[i-2], fm->signal[i-1]);
-		} else {
+		switch (fm->custom_atan) {
+		case 0:
 			pcm = polar_discriminant(fm->signal[i], fm->signal[i+1],
 				fm->signal[i-2], fm->signal[i-1]);
+			break;
+		case 1:
+			pcm = polar_disc_fast(fm->signal[i], fm->signal[i+1],
+				fm->signal[i-2], fm->signal[i-1]);
+			break;
+		case 2:
+			pcm = polar_disc_lut(fm->signal[i], fm->signal[i+1],
+				fm->signal[i-2], fm->signal[i-1]);
+			break;
 		}
 		fm->signal2[i/2] = (int16_t)pcm;
 	}
@@ -640,7 +702,7 @@ int main(int argc, char **argv)
 	fm.mode_demod = &fm_demod;
 	sem_init(&data_ready, 0, 0);
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFANWMULRD")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRD")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = atoi(optarg);
@@ -688,7 +750,13 @@ int main(int argc, char **argv)
 			fm.fir_enable = 1;
 			break;
 		case 'A':
-			fm.custom_atan = 1;
+			if (strcmp("std",  optarg) == 0) {
+				fm.custom_atan = 0;}
+			if (strcmp("fast", optarg) == 0) {
+				fm.custom_atan = 1;}
+			if (strcmp("lut",  optarg) == 0) {
+				atan_lut_init();
+				fm.custom_atan = 2;}
 			break;
 		case 'D':
 			fm.deemph = 1;
