@@ -37,7 +37,6 @@
 #include "getopt/getopt.h"
 #endif
 
-#include <semaphore.h>
 #include <pthread.h>
 #include <libusb.h>
 
@@ -59,7 +58,7 @@
 #define BADSAMPLE    255
 
 static pthread_t demod_thread;
-static sem_t data_ready;
+static pthread_mutex_t data_ready;  /* locked when no data available */
 static volatile int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 
@@ -334,20 +333,18 @@ void messages(uint16_t *buf, int len)
 
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
-	int dr_val;
 	if (do_exit) {
 		return;}
 	memcpy(buffer, buf, len);
-	sem_getvalue(&data_ready, &dr_val);
-	if (dr_val <= 0) {
-		sem_post(&data_ready);}
+	pthread_mutex_trylock(&data_ready);
+	pthread_mutex_unlock(&data_ready);
 }
 
 static void *demod_thread_fn(void *arg)
 {
 	int len;
 	while (!do_exit) {
-		sem_wait(&data_ready);
+		pthread_mutex_lock(&data_ready);
 		len = magnitute(buffer, DEFAULT_BUF_LENGTH);
 		manchester((uint16_t*)buffer, len);
 		messages((uint16_t*)buffer, len);
@@ -368,7 +365,7 @@ int main(int argc, char **argv)
 	int device_count;
 	int ppm_error = 0;
 	char vendor[256], product[256], serial[256];
-	sem_init(&data_ready, 0, 0);
+	pthread_mutex_init(&data_ready, NULL);
 	squares_precompute();
 
 	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VS")) != -1)
@@ -507,6 +504,7 @@ int main(int argc, char **argv)
 	else {
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 	rtlsdr_cancel_async(dev);
+	pthread_mutex_destroy(&data_ready);
 
 	if (file != stdout) {
 		fclose(file);}

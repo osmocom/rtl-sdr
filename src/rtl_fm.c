@@ -3,6 +3,7 @@
  * Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
  * Copyright (C) 2012 by Hoernchen <la@tfc-server.de>
  * Copyright (C) 2012 by Kyle Keen <keenerd@gmail.com>
+ * Copyright (C) 2013 by Elias Oenal <EliasOenal@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,7 +54,6 @@
 #define round(x) (x > 0.0 ? floor(x + 0.5): ceil(x - 0.5))
 #endif
 
-#include <semaphore.h>
 #include <pthread.h>
 #include <libusb.h>
 
@@ -67,7 +67,8 @@
 #define AUTO_GAIN			-100
 
 static pthread_t demod_thread;
-static sem_t data_ready;
+static pthread_mutex_t data_ready;  /* locked when no fresh data available */
+static pthread_mutex_t data_write;  /* locked when r/w buffer */
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static int lcm_post[17] = {1,1,1,3,1,5,3,7,1,9,5,11,3,13,7,15,1};
@@ -579,6 +580,7 @@ void full_demod(struct fm_state *fm)
 	} else {
 		low_pass(fm, fm->buf, fm->buf_len);
 	}
+	pthread_mutex_unlock(&data_write);
 	fm->mode_demod(fm);
         if (fm->mode_demod == &raw_demod) {
 		fwrite(fm->signal2, 2, fm->signal2_len, fm->file);
@@ -619,25 +621,23 @@ void full_demod(struct fm_state *fm)
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	struct fm_state *fm2 = ctx;
-	int dr_val;
 	if (do_exit) {
 		return;}
 	if (!ctx) {
 		return;}
+	pthread_mutex_lock(&data_write);
 	memcpy(fm2->buf, buf, len);
 	fm2->buf_len = len;
+	pthread_mutex_unlock(&data_ready);
 	/* single threaded uses 25% less CPU? */
 	/* full_demod(fm2); */
-	sem_getvalue(&data_ready, &dr_val);
-	if (dr_val <= 0) {
-		sem_post(&data_ready);}
 }
 
 static void *demod_thread_fn(void *arg)
 {
 	struct fm_state *fm2 = arg;
 	while (!do_exit) {
-		sem_wait(&data_ready);
+		pthread_mutex_lock(&data_ready);
 		full_demod(fm2);
 		if (fm2->exit_flag) {
 			do_exit = 1;
@@ -725,7 +725,8 @@ int main(int argc, char **argv)
 	int ppm_error = 0;
 	char vendor[256], product[256], serial[256];
 	fm_init(&fm);
-	sem_init(&data_ready, 0, 0);
+	pthread_mutex_init(&data_ready, NULL);
+	pthread_mutex_init(&data_write, NULL);
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRDC")) != -1) {
 		switch (opt) {
@@ -929,6 +930,8 @@ int main(int argc, char **argv)
 	else {
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 	rtlsdr_cancel_async(dev);
+	pthread_mutex_destroy(&data_ready);
+	pthread_mutex_destroy(&data_write);
 
 	if (fm.file != stdout) {
 		fclose(fm.file);}
