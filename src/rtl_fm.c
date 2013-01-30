@@ -78,18 +78,13 @@ static int atan_lut_coef = 8;
 
 struct fm_state
 {
-	int      now_r;
-	int      now_j;
-	int      pre_r;
-	int      pre_j;
+	int      now_r, now_j;
+	int      pre_r, pre_j;
 	int      prev_index;
 	int      downsample;    /* min 1, max 256 */
 	int      post_downsample;
 	int      output_scale;
-	int      squelch_level;
-	int      conseq_squelch;
-	int      squelch_hits;
-	int      terminate_on_squelch;
+	int      squelch_level, conseq_squelch, squelch_hits, terminate_on_squelch;
 	int      exit_flag;
 	uint8_t  buf[MAXIMUM_BUF_LENGTH];
 	uint32_t buf_len;
@@ -108,10 +103,10 @@ struct fm_state
 	int      fir[256];  /* fir_len == downsample */
 	int      fir_sum;
 	int      custom_atan;
-	int      deemph;
-	int      deemph_a;
+	int      deemph, deemph_a;
 	int      now_lpr;
 	int      prev_lpr_index;
+	int      dc_block, dc_avg;
 	void     (*mode_demod)(struct fm_state*);
 };
 
@@ -146,6 +141,7 @@ void usage(void)
 		"\t[-R enables raw mode (default: off, 2x16 bit output)]\n"
 		"\t[-F enables high quality FIR (default: off/square)]\n"
 		"\t[-D enables de-emphasis (default: off)]\n"
+		"\t[-C enables DC blocking of output (default: off)]\n"
 		"\t[-A std/fast/lut choose atan math (default: std)]\n\n"
 		"Produces signed 16 bit ints, use Sox or aplay to hear them.\n"
 		"\trtl_fm ... - | play -t raw -r 24k -e signed-integer -b 16 -c 1 -V1 -\n"
@@ -488,6 +484,21 @@ void deemph_filter(struct fm_state *fm)
 	}
 }
 
+void dc_block_filter(struct fm_state *fm)
+{
+	int i, avg;
+	int64_t sum = 0;
+	for (i=0; i < fm->signal2_len; i++) {
+		sum += fm->signal2[i];
+	}
+	avg = sum / fm->signal2_len;
+	avg = (avg + fm->dc_avg * 9) / 10;
+	for (i=0; i < fm->signal2_len; i++) {
+		fm->signal2[i] -= avg;
+	}
+	fm->dc_avg = avg;
+}
+
 int mad(int *samples, int len, int step)
 /* mean average deviation */
 {
@@ -591,6 +602,8 @@ void full_demod(struct fm_state *fm)
 	}
 	if (fm->deemph) {
 		deemph_filter(fm);}
+	if (fm->dc_block) {
+		dc_block_filter(fm);}
 	/* ignore under runs for now */
 	fwrite(fm->signal2, 2, fm->signal2_len, fm->file);
 	if (hop) {
@@ -689,13 +702,12 @@ void fm_init(struct fm_state *fm)
 	fm->deemph = 0;
 	fm->output_rate = -1;  // flag for disabled
 	fm->mode_demod = &fm_demod;
-	fm->pre_j = 0;
-	fm->pre_r = 0;
-	fm->now_r = 0;
-	fm->now_j = 0;
+	fm->pre_j = fm->pre_r = fm->now_r = fm->now_j = 0;
 	fm->prev_lpr_index = 0;
 	fm->deemph_a = 0;
 	fm->now_lpr = 0;
+	fm->dc_block = 0;
+	fm->dc_avg = 0;
 }
 
 int main(int argc, char **argv)
@@ -715,7 +727,7 @@ int main(int argc, char **argv)
 	fm_init(&fm);
 	sem_init(&data_ready, 0, 0);
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRD")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRDC")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = atoi(optarg);
@@ -773,6 +785,9 @@ int main(int argc, char **argv)
 			break;
 		case 'D':
 			fm.deemph = 1;
+			break;
+		case 'C':
+			fm.dc_block = 1;
 			break;
 		case 'N':
 			fm.mode_demod = &fm_demod;
