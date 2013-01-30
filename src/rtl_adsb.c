@@ -54,16 +54,19 @@
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define AUTO_GAIN			-100
 
+#define MESSAGEGO    253
+#define OVERWRITE    254
+#define BADSAMPLE    255
+
 static pthread_t demod_thread;
 static sem_t data_ready;
 static volatile int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 
-/* look up table, could be made smaller */
-uint8_t pyth[129][129];
+uint16_t squares[256];
 
 /* todo, bundle these up in a struct */
-uint8_t *buffer;
+uint8_t *buffer;  /* also abused for uint16_t */
 int verbose_output = 0;
 int short_output = 0;
 double quality = 1.0;
@@ -141,17 +144,7 @@ void display(int *frame, int len)
 	fprintf(file, "--------------\n");
 }
 
-void pyth_precompute(void)
-{
-	int x, y;
-	double scale = 1.408 ;  /* use the full 8 bits */
-	for (x=0; x<129; x++) {
-	for (y=0; y<129; y++) {
-		pyth[x][y] = (uint8_t)round(scale * sqrt(x*x + y*y));
-	}}
-}
-
-inline uint8_t abs8(uint8_t x)
+int abs8(int x)
 /* do not subtract 128 from the raw iq, this handles it */
 {
 	if (x >= 128) {
@@ -159,18 +152,31 @@ inline uint8_t abs8(uint8_t x)
 	return 128 - x;
 }
 
+void squares_precompute(void)
+/* equiv to abs(x-128) ^ 2 */
+{
+	int i, j;
+	// todo, check if this LUT is actually any faster
+	for (i=0; i<256; i++) {
+		j = abs8(i);
+		squares[i] = (uint16_t)(j*j);
+	}
+}
+
 int magnitute(uint8_t *buf, int len)
-/* takes i/q, changes buf in place, returns new len */
+/* takes i/q, changes buf in place (16 bit), returns new len (16 bit) */
 {
 	int i;
+	uint16_t *m;
 	for (i=0; i<len; i+=2) {
-		buf[i/2] = pyth[abs8(buf[i])][abs8(buf[i+1])];
+		m = (uint16_t*)(&buf[i]);
+		*m = squares[buf[i]] + squares[buf[i+1]];
 	}
 	return len/2;
 }
 
-inline uint8_t single_manchester(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
-/* takes 4 consecutive real samples, return 0 or 1, 255 on error */
+inline uint16_t single_manchester(uint16_t a, uint16_t b, uint16_t c, uint16_t d)
+/* takes 4 consecutive real samples, return 0 or 1, BADSAMPLE on error */
 {
 	int bit, bit_p;
 	bit_p = a > b;
@@ -181,9 +187,9 @@ inline uint8_t single_manchester(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 
 	if (quality == 0.5) {
 		if ( bit &&  bit_p && b > c) {
-			return 255;}
+			return BADSAMPLE;}
 		if (!bit && !bit_p && b < c) {
-			return 255;}
+			return BADSAMPLE;}
 		return bit;
 	}
 
@@ -196,7 +202,7 @@ inline uint8_t single_manchester(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 			return 0;}
 		if (!bit && !bit_p && c < b) {
 			return 0;}
-		return 255;
+		return BADSAMPLE;
 	}
 
 	if ( bit &&  bit_p && c > b && d < a) {
@@ -207,36 +213,36 @@ inline uint8_t single_manchester(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 		return 0;}
 	if (!bit && !bit_p && c < b && d > a) {
 		return 0;}
-	return 255;
+	return BADSAMPLE;
 }
 
-inline uint8_t min8(uint8_t a, uint8_t b)
+inline uint16_t min16(uint16_t a, uint16_t b)
 {
 	return a<b ? a : b;
 }
 
-inline uint8_t max8(uint8_t a, uint8_t b)
+inline uint16_t max16(uint16_t a, uint16_t b)
 {
 	return a>b ? a : b;
 }
 
-inline int preamble(uint8_t *buf, int len, int i)
+inline int preamble(uint16_t *buf, int i)
 /* returns 0/1 for preamble at index i */
 {
 	int i2;
-	uint8_t low  = 0;
-	uint8_t high = 255;
+	uint16_t low  = 0;
+	uint16_t high = 65535;
 	for (i2=0; i2<preamble_len; i2++) {
 		switch (i2) {
 			case 0:
 			case 2:
 			case 7:
 			case 9:
-				//high = min8(high, buf[i+i2]);
+				//high = min16(high, buf[i+i2]);
 				high = buf[i+i2];
 				break;
 			default:
-				//low  = max8(low,  buf[i+i2]);
+				//low  = max16(low,  buf[i+i2]);
 				low = buf[i+i2];
 				break;
 		}
@@ -246,24 +252,24 @@ inline int preamble(uint8_t *buf, int len, int i)
 	return 1;
 }
 
-void manchester(uint8_t *buf, int len)
-/* overwrites magnitude buffer with valid bits (255 on errors) */
+void manchester(uint16_t *buf, int len)
+/* overwrites magnitude buffer with valid bits (BADSAMPLE on errors) */
 {
 	/* a and b hold old values to verify local manchester */
-	uint8_t a=0, b=0;
-	uint8_t bit;
+	uint16_t a=0, b=0;
+	uint16_t bit;
 	int i, i2, start, errors;
 	// todo, allow wrap across buffers
 	i = 0;
 	while (i < len) {
 		/* find preamble */
 		for ( ; i < (len - preamble_len); i++) {
-			if (!preamble(buf, len, i)) {
+			if (!preamble(buf, i)) {
 				continue;}
 			a = buf[i];
 			b = buf[i+1];
 			for (i2=0; i2<preamble_len; i2++) {
-				buf[i+i2] = 253;}
+				buf[i+i2] = MESSAGEGO;}
 			i += preamble_len;
 			break;
 		}
@@ -274,25 +280,25 @@ void manchester(uint8_t *buf, int len)
 			bit = single_manchester(a, b, buf[i], buf[i+1]);
 			a = buf[i];
 			b = buf[i+1];
-			if (bit == 255) {
+			if (bit == BADSAMPLE) {
 				errors += 1;
 				if (errors > allowed_errors) {
-					buf[i2] = 255;
+					buf[i2] = BADSAMPLE;
 					break;
 				} else {
 					bit = a > b;
 					/* these don't have to match the bit */
 					a = 0;
-					b = 255;
+					b = 65535;
 				}
 			}
-			buf[i] = buf[i+1] = 254;  /* to be overwritten */
+			buf[i] = buf[i+1] = OVERWRITE;
 			buf[i2] = bit;
 		}
 	}
 }
 
-void messages(uint8_t *buf, int len)
+void messages(uint16_t *buf, int len)
 {
 	int i, i2, start, preamble_found;
 	int data_i, index, shift, frame_len;
@@ -343,8 +349,8 @@ static void *demod_thread_fn(void *arg)
 	while (!do_exit) {
 		sem_wait(&data_ready);
 		len = magnitute(buffer, DEFAULT_BUF_LENGTH);
-		manchester(buffer, len);
-		messages(buffer, len);
+		manchester((uint16_t*)buffer, len);
+		messages((uint16_t*)buffer, len);
 	}
 	rtlsdr_cancel_async(dev);
 	return 0;
@@ -363,7 +369,7 @@ int main(int argc, char **argv)
 	int ppm_error = 0;
 	char vendor[256], product[256], serial[256];
 	sem_init(&data_ready, 0, 0);
-	pyth_precompute();
+	squares_precompute();
 
 	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VS")) != -1)
 	{
