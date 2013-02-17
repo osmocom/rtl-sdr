@@ -344,8 +344,8 @@ static void *command_worker(void *arg)
 			break;
 		case 0x06:
 			tmp = ntohl(cmd.param);
-			printf("set if stage %d, gain %d\n", tmp >> 16, tmp & 0xffff);
-			rtlsdr_set_tuner_if_gain(dev, tmp >> 16, tmp & 0xffff);
+			printf("set if stage %d gain %d\n", tmp >> 16, (short)(tmp & 0xffff));
+			rtlsdr_set_tuner_if_gain(dev, tmp >> 16, (short)(tmp & 0xffff));
 			break;
 		case 0x07:
 			printf("set test mode %d\n", ntohl(cmd.param));
