@@ -90,6 +90,7 @@ struct rtlsdr_dev {
 	int gain; /* tenth dB */
 	struct e4k_state e4k_s;
 	int dev_lost;
+	int driver_active;
 	unsigned int xfer_errors;
 };
 
@@ -1347,6 +1348,16 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	libusb_free_device_list(list, 1);
 
+	if (libusb_kernel_driver_active(dev->devh, 0) == 1) {
+		dev->driver_active = 1;
+		if (!libusb_detach_kernel_driver(dev->devh, 0)) {
+			fprintf(stderr, "Detached kernel driver\n");
+		} else {
+			fprintf(stderr, "Detaching kernel driver failed!");
+			goto err;
+		}
+	}
+
 	r = libusb_claim_interface(dev->devh, 0);
 	if (r < 0) {
 		fprintf(stderr, "usb_claim_interface error %d\n", r);
@@ -1471,6 +1482,14 @@ int rtlsdr_close(rtlsdr_dev_t *dev)
 	}
 
 	libusb_release_interface(dev->devh, 0);
+
+	if (dev->driver_active) {
+		if (!libusb_attach_kernel_driver(dev->devh, 0))
+			fprintf(stderr, "Reattached kernel driver\n");
+		else
+			fprintf(stderr, "Reattaching kernel driver failed!\n");
+	}
+
 	libusb_close(dev->devh);
 
 	libusb_exit(dev->ctx);
