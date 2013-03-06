@@ -336,6 +336,13 @@ int main(int argc, char **argv)
 #endif
 	}
 
+	if (!ppm_benchmark) {
+		fprintf(stderr, "\nInfo: This tool will continuously"
+				" read from the device, and report if\n"
+				"samples get lost. If you observe no "
+				"further output, everything is fine.\n\n");
+	}
+
 	if (sync_mode) {
 		fprintf(stderr, "Reading samples in sync mode...\n");
 		while (!do_exit) {
