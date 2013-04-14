@@ -126,7 +126,7 @@ endif()
 # Install built library files & utilities
 ########################################################################
 install(TARGETS ${INSTALL_TARGETS}
-    LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
-    ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR} # .so/.dylib file
+    ARCHIVE DESTINATION ${LIB_INSTALL_DIR} # .lib file
     RUNTIME DESTINATION bin              # .dll file
 )

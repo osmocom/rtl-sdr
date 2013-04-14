@@ -33,6 +33,10 @@ set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
+if(NOT LIB_INSTALL_DIR)
+   set(LIB_INSTALL_DIR lib)
+endif()
+
 ########################################################################
 # Compiler specific setup
 ########################################################################
@@ -130,7 +134,7 @@ ENDIF(CMAKE_CROSSCOMPILING)
 
 set(prefix ${CMAKE_INSTALL_PREFIX})
 set(exec_prefix \${prefix})
-set(libdir \${exec_prefix}/lib)
+set(libdir \${exec_prefix}/${LIB_INSTALL_DIR})
 set(includedir \${prefix}/include)
 
 CONFIGURE_FILE(
@@ -140,5 +144,5 @@ CONFIGURE_FILE(
 
 INSTALL(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
-    DESTINATION lib/pkgconfig
+    DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
 )
