@@ -37,6 +37,12 @@ if(NOT LIB_INSTALL_DIR)
    set(LIB_INSTALL_DIR lib)
 endif()
 
+# Set the version information here
+set(VERSION_INFO_MAJOR_VERSION 0) # increment major on api compatibility changes
+set(VERSION_INFO_MINOR_VERSION 0) # increment minor on feature-level changes
+set(VERSION_INFO_PATCH_VERSION git) # increment patch for bug fixes and docs
+include(Version) # setup version info
+
 ########################################################################
 # Compiler specific setup
 ########################################################################
@@ -146,3 +152,9 @@ INSTALL(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
     DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
 )
+
+########################################################################
+# Print Summary
+########################################################################
+MESSAGE(STATUS "Building for version: ${VERSION} / ${LIBVER}")
+MESSAGE(STATUS "Using install prefix: ${CMAKE_INSTALL_PREFIX}")
