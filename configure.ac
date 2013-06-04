@@ -64,6 +64,12 @@ AC_TRY_COMPILE([],[],
   AC_MSG_RESULT(no)
   CFLAGS="$old_CFLAGS")
 
+AC_ARG_ENABLE(driver-detach,
+[  --enable-driver-detach          Enable detaching of kernel driver (disabled by default)],
+[if test x$enableval = xyes; then
+    CFLAGS="$CFLAGS -DDETACH_KERNEL_DRIVER"
+fi])
+
 dnl Generate the output
 AC_CONFIG_HEADER(config.h)
 

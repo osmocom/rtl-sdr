@@ -1351,12 +1351,22 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	if (libusb_kernel_driver_active(dev->devh, 0) == 1) {
 		dev->driver_active = 1;
+
+#ifdef DETACH_KERNEL_DRIVER
 		if (!libusb_detach_kernel_driver(dev->devh, 0)) {
 			fprintf(stderr, "Detached kernel driver\n");
 		} else {
 			fprintf(stderr, "Detaching kernel driver failed!");
 			goto err;
 		}
+#else
+		fprintf(stderr, "\nKernel driver is active, or device is "
+				"claimed by second instance of librtlsdr."
+				"\nIn the first case, please either detach"
+				" or blacklist the kernel module\n"
+				"(dvb_usb_rtl28xxu), or enable automatic"
+				" detaching at compile time.\n\n");
+#endif
 	}
 
 	r = libusb_claim_interface(dev->devh, 0);
@@ -1484,12 +1494,14 @@ int rtlsdr_close(rtlsdr_dev_t *dev)
 
 	libusb_release_interface(dev->devh, 0);
 
+#ifdef DETACH_KERNEL_DRIVER
 	if (dev->driver_active) {
 		if (!libusb_attach_kernel_driver(dev->devh, 0))
 			fprintf(stderr, "Reattached kernel driver\n");
 		else
 			fprintf(stderr, "Reattaching kernel driver failed!\n");
 	}
+#endif
 
 	libusb_close(dev->devh);
 
