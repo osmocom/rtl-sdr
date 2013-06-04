@@ -1,6 +1,6 @@
 # This is _NOT_ the library release version, it's an API version.
 # Please read Chapter 6 "Library interface versions" of the libtool documentation before making any modification
-LIBVERSION=0:0:0
+LIBVERSION=0:5:0
 
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS = ${CFLAGS} -fPIC ${SYMBOL_VISIBILITY}
