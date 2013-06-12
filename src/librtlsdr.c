@@ -252,6 +252,7 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x1f4d, 0xd803, "PROlectrix DV107669" },
 	{ 0x1b80, 0xd398, "Zaapa ZT-MINDVBZP" },
 	{ 0x1b80, 0xd3a4, "Twintech UT-40" },
+	{ 0x1b80, 0xd3a8, "ASUS U3100MINI_PLUS_V2" },
 	{ 0x1d19, 0x1101, "Dexatek DK DVB-T Dongle (Logilink VG0002A)" },
 	{ 0x1d19, 0x1102, "Dexatek DK DVB-T Dongle (MSI DigiVox mini II V3.0)" },
 	{ 0x1d19, 0x1103, "Dexatek Technology Ltd. DK 5217 DVB-T Dongle" },
