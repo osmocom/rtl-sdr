@@ -34,6 +34,11 @@
  *       pad output on hop
  *       nearest gain approx
  *       frequency ranges could be stored better
+ *       scaled AM demod amplification
+ *       auto-hop after time limit
+ *       peak detector to tune onto stronger signals
+ *       use slower sample rates (250k) for nbfm
+ *       offset tuning
  */
 
 #include <errno.h>
@@ -66,12 +71,16 @@
 #define MAXIMUM_BUF_LENGTH		(MAXIMUM_OVERSAMPLE * DEFAULT_BUF_LENGTH)
 #define AUTO_GAIN			-100
 
+#define FREQUENCIES_LIMIT		1000
+
 static pthread_t demod_thread;
-static pthread_mutex_t data_ready;  /* locked when no fresh data available */
-static pthread_mutex_t data_write;  /* locked when r/w buffer */
-static int do_exit = 0;
+static pthread_cond_t data_ready;   /* shared buffer filled */
+static pthread_rwlock_t data_rw;    /* lock for shared buffer */
+static pthread_mutex_t data_mutex;  /* because conds are dumb */
+static volatile int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static int lcm_post[17] = {1,1,1,3,1,5,3,7,1,9,5,11,3,13,7,15,1};
+static int ACTUAL_BUF_LENGTH;
 
 static int *atan_lut = NULL;
 static int atan_lut_size = 131072; /* 512 KB */
@@ -95,7 +104,7 @@ struct fm_state
 	int      signal2_len;
 	FILE     *file;
 	int      edge;
-	uint32_t freqs[1000];
+	uint32_t freqs[FREQUENCIES_LIMIT];
 	int      freq_len;
 	int      freq_now;
 	uint32_t sample_rate;
@@ -145,7 +154,7 @@ void usage(void)
 		"\t[-C enables DC blocking of output (default: off)]\n"
 		"\t[-A std/fast/lut choose atan math (default: std)]\n\n"
 		"Produces signed 16 bit ints, use Sox or aplay to hear them.\n"
-		"\trtl_fm ... - | play -t raw -r 24k -e signed-integer -b 16 -c 1 -V1 -\n"
+		"\trtl_fm ... - | play -t raw -r 24k -es -b 16 -c 1 -V1 -\n"
 		"\t             | aplay -r 24k -f S16_LE -t raw -c 1\n"
 		"\t  -s 22.5k - | multimon -t raw /dev/stdin\n\n");
 	exit(1);
@@ -158,7 +167,7 @@ sighandler(int signum)
 	if (CTRL_C_EVENT == signum) {
 		fprintf(stderr, "Signal caught, exiting!\n");
 		do_exit = 1;
-		rtlsdr_cancel_async(dev);
+		//rtlsdr_cancel_async(dev);
 		return TRUE;
 	}
 	return FALSE;
@@ -168,9 +177,13 @@ static void sighandler(int signum)
 {
 	fprintf(stderr, "Signal caught, exiting!\n");
 	do_exit = 1;
-	rtlsdr_cancel_async(dev);
+	//rtlsdr_cancel_async(dev);
 }
 #endif
+
+/* more cond dumbness */
+#define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
+#define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
 
 void rotate_90(unsigned char *buf, uint32_t len)
 /* 90 rotation is 1+0j, 0+1j, -1+0j, 0-1j
@@ -205,8 +218,8 @@ void low_pass(struct fm_state *fm, unsigned char *buf, uint32_t len)
 		if (fm->prev_index < fm->downsample) {
 			continue;
 		}
-		fm->signal[i2]   = fm->now_r * fm->output_scale;
-		fm->signal[i2+1] = fm->now_j * fm->output_scale;
+		fm->signal[i2]   = fm->now_r; // * fm->output_scale;
+		fm->signal[i2+1] = fm->now_j; // * fm->output_scale;
 		fm->prev_index = 0;
 		fm->now_r = 0;
 		fm->now_j = 0;
@@ -248,8 +261,8 @@ void low_pass_fir(struct fm_state *fm, unsigned char *buf, uint32_t len)
 		if (fm->prev_index < fm->downsample) {
 			continue;
 		}
-		fm->signal[i2]   = fm->now_r * fm->output_scale;
-		fm->signal[i2+1] = fm->now_j * fm->output_scale;
+		fm->signal[i2]   = fm->now_r; //* fm->output_scale;
+		fm->signal[i2+1] = fm->now_j; //* fm->output_scale;
 		fm->prev_index = 0;
 		fm->now_r = 0;
 		fm->now_j = 0;
@@ -432,7 +445,7 @@ void am_demod(struct fm_state *fm)
 		//fm->signal2[i/2] = (int16_t)hypot(fm->signal[i], fm->signal[i+1]);
 		pcm = fm->signal[i] * fm->signal[i];
 		pcm += fm->signal[i+1] * fm->signal[i+1];
-		fm->signal2[i/2] = (int16_t)sqrt(pcm); // * fm->output_scale;
+		fm->signal2[i/2] = (int16_t)sqrt(pcm) * fm->output_scale;
 	}
 	fm->signal2_len = fm->signal_len/2;
 	// lowpass? (3khz)  highpass?  (dc)
@@ -443,7 +456,7 @@ void usb_demod(struct fm_state *fm)
 	int i, pcm;
 	for (i = 0; i < (fm->signal_len); i += 2) {
 		pcm = fm->signal[i] + fm->signal[i+1];
-		fm->signal2[i/2] = (int16_t)pcm; // * fm->output_scale;
+		fm->signal2[i/2] = (int16_t)pcm * fm->output_scale;
 	}
 	fm->signal2_len = fm->signal_len/2;
 }
@@ -453,7 +466,7 @@ void lsb_demod(struct fm_state *fm)
 	int i, pcm;
 	for (i = 0; i < (fm->signal_len); i += 2) {
 		pcm = fm->signal[i] - fm->signal[i+1];
-		fm->signal2[i/2] = (int16_t)pcm; // * fm->output_scale;
+		fm->signal2[i/2] = (int16_t)pcm * fm->output_scale;
 	}
 	fm->signal2_len = fm->signal_len/2;
 }
@@ -545,7 +558,8 @@ static void optimal_settings(struct fm_state *fm, int freq, int hopping)
 	fm->output_scale = (1<<15) / (128 * fm->downsample);
 	if (fm->output_scale < 1) {
 		fm->output_scale = 1;}
-	fm->output_scale = 1;
+	if (fm->mode_demod == &fm_demod) {
+		fm->output_scale = 1;}
 	/* Set the frequency */
 	r = rtlsdr_set_center_freq(dev, (uint32_t)capture_freq);
 	if (hopping) {
@@ -553,7 +567,7 @@ static void optimal_settings(struct fm_state *fm, int freq, int hopping)
 	fprintf(stderr, "Oversampling input by: %ix.\n", fm->downsample);
 	fprintf(stderr, "Oversampling output by: %ix.\n", fm->post_downsample);
 	fprintf(stderr, "Buffer size: %0.2fms\n",
-		1000 * 0.5 * lcm_post[fm->post_downsample] * (float)DEFAULT_BUF_LENGTH / (float)capture_rate);
+		1000 * 0.5 * (float)ACTUAL_BUF_LENGTH / (float)capture_rate);
 	if (r < 0) {
 		fprintf(stderr, "WARNING: Failed to set center freq.\n");}
 	else {
@@ -574,15 +588,16 @@ static void optimal_settings(struct fm_state *fm, int freq, int hopping)
 void full_demod(struct fm_state *fm)
 {
 	int i, sr, freq_next, hop = 0;
+	pthread_rwlock_wrlock(&data_rw);
 	rotate_90(fm->buf, fm->buf_len);
 	if (fm->fir_enable) {
 		low_pass_fir(fm, fm->buf, fm->buf_len);
 	} else {
 		low_pass(fm, fm->buf, fm->buf_len);
 	}
-	pthread_mutex_unlock(&data_write);
+	pthread_rwlock_unlock(&data_rw);
 	fm->mode_demod(fm);
-        if (fm->mode_demod == &raw_demod) {
+	if (fm->mode_demod == &raw_demod) {
 		fwrite(fm->signal2, 2, fm->signal2_len, fm->file);
 		return;
 	}
@@ -625,23 +640,41 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 		return;}
 	if (!ctx) {
 		return;}
-	pthread_mutex_lock(&data_write);
+	pthread_rwlock_wrlock(&data_rw);
 	memcpy(fm2->buf, buf, len);
 	fm2->buf_len = len;
-	pthread_mutex_unlock(&data_ready);
+	pthread_rwlock_unlock(&data_rw);
+	safe_cond_signal(&data_ready, &data_mutex);
 	/* single threaded uses 25% less CPU? */
 	/* full_demod(fm2); */
+}
+
+static void sync_read(unsigned char *buf, uint32_t len, struct fm_state *fm)
+{
+	int r, n_read;
+	r = rtlsdr_read_sync(dev, buf, len, &n_read);
+	if (r < 0) {
+		fprintf(stderr, "WARNING: sync read failed.\n");
+		return;
+	}
+	pthread_rwlock_wrlock(&data_rw);
+	memcpy(fm->buf, buf, len);
+	fm->buf_len = len;
+	pthread_rwlock_unlock(&data_rw);
+	safe_cond_signal(&data_ready, &data_mutex);
+	//full_demod(fm);
 }
 
 static void *demod_thread_fn(void *arg)
 {
 	struct fm_state *fm2 = arg;
 	while (!do_exit) {
-		pthread_mutex_lock(&data_ready);
+		safe_cond_wait(&data_ready, &data_mutex);
 		full_demod(fm2);
 		if (fm2->exit_flag) {
 			do_exit = 1;
-			rtlsdr_cancel_async(dev);}
+			//rtlsdr_cancel_async(dev);
+		}
 	}
 	return 0;
 }
@@ -650,7 +683,7 @@ double atofs(char* f)
 /* standard suffixes */
 {
 	char* chop;
-        double suff = 1.0;
+	double suff = 1.0;
 	chop = malloc((strlen(f)+1)*sizeof(char));
 	strncpy(chop, f, strlen(f)-1);
 	switch (f[strlen(f)-1]) {
@@ -660,7 +693,7 @@ double atofs(char* f)
 			suff *= 1e3;
 		case 'k':
 			suff *= 1e3;
-                        suff *= atof(chop);}
+			suff *= atof(chop);}
 	free(chop);
 	if (suff != 1.0) {
 		return suff;}
@@ -680,6 +713,8 @@ void frequency_range(struct fm_state *fm, char *arg)
 	{
 		fm->freqs[fm->freq_len] = (uint32_t)i;
 		fm->freq_len++;
+		if (fm->freq_len >= FREQUENCIES_LIMIT) {
+			break;}
 	}
 	stop[-1] = ':';
 	step[-1] = ':';
@@ -725,8 +760,9 @@ int main(int argc, char **argv)
 	int ppm_error = 0;
 	char vendor[256], product[256], serial[256];
 	fm_init(&fm);
-	pthread_mutex_init(&data_ready, NULL);
-	pthread_mutex_init(&data_write, NULL);
+	pthread_cond_init(&data_ready, NULL);
+	pthread_rwlock_init(&data_rw, NULL);
+	pthread_mutex_init(&data_mutex, NULL);
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRDC")) != -1) {
 		switch (opt) {
@@ -734,6 +770,8 @@ int main(int argc, char **argv)
 			dev_index = atoi(optarg);
 			break;
 		case 'f':
+			if (fm.freq_len >= FREQUENCIES_LIMIT) {
+				break;}
 			if (strchr(optarg, ':'))
 				{frequency_range(&fm, optarg);}
 			else
@@ -828,18 +866,28 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	if (fm.freq_len >= FREQUENCIES_LIMIT) {
+		fprintf(stderr, "Too many channels, maximum %i.\n", FREQUENCIES_LIMIT);
+		exit(1);
+	}
+
+	if (fm.freq_len > 1 && fm.squelch_level == 0) {
+		fprintf(stderr, "Please specify a squelch level.  Required for scanning multiple frequencies.\n");
+		exit(1);
+	}
+
 	if (fm.freq_len > 1) {
 		fm.terminate_on_squelch = 0;
 	}
 
 	if (argc <= optind) {
-		//usage();
 		filename = "-";
 	} else {
 		filename = argv[optind];
 	}
 
-	buffer = malloc(lcm_post[fm.post_downsample] * DEFAULT_BUF_LENGTH * sizeof(uint8_t));
+	ACTUAL_BUF_LENGTH = lcm_post[fm.post_downsample] * DEFAULT_BUF_LENGTH;
+	buffer = malloc(ACTUAL_BUF_LENGTH * sizeof(uint8_t));
 
 	device_count = rtlsdr_get_device_count();
 	if (!device_count) {
@@ -875,6 +923,8 @@ int main(int argc, char **argv)
 #endif
 
 	/* WBFM is special */
+	// I really should loop over everything
+	// but you are more wrong for scanning broadcast FM
 	if (wb_mode) {
 		fm.freqs[0] += 16000;
 	}
@@ -921,17 +971,26 @@ int main(int argc, char **argv)
 		fprintf(stderr, "WARNING: Failed to reset buffers.\n");}
 
 	pthread_create(&demod_thread, NULL, demod_thread_fn, (void *)(&fm));
-	rtlsdr_read_async(dev, rtlsdr_callback, (void *)(&fm),
+	/*rtlsdr_read_async(dev, rtlsdr_callback, (void *)(&fm),
 			      DEFAULT_ASYNC_BUF_NUMBER,
-			      lcm_post[fm.post_downsample] * DEFAULT_BUF_LENGTH);
+			      ACTUAL_BUF_LENGTH);*/
+
+	while (!do_exit) {
+		sync_read(buffer, ACTUAL_BUF_LENGTH, &fm);
+	}
 
 	if (do_exit) {
 		fprintf(stderr, "\nUser cancel, exiting...\n");}
 	else {
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
-	rtlsdr_cancel_async(dev);
-	pthread_mutex_destroy(&data_ready);
-	pthread_mutex_destroy(&data_write);
+
+	//rtlsdr_cancel_async(dev);
+	safe_cond_signal(&data_ready, &data_mutex);
+	pthread_join(demod_thread, NULL);
+
+	pthread_cond_destroy(&data_ready);
+	pthread_rwlock_destroy(&data_rw);
+	pthread_mutex_destroy(&data_mutex);
 
 	if (fm.file != stdout) {
 		fclose(fm.file);}
@@ -940,3 +999,5 @@ int main(int argc, char **argv)
 	free (buffer);
 	return r >= 0 ? r : -r;
 }
+
+// vim: tabstop=8:softtabstop=8:shiftwidth=8:noexpandtab
