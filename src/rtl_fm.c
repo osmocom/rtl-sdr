@@ -211,8 +211,8 @@ void low_pass(struct fm_state *fm, unsigned char *buf, uint32_t len)
 {
 	int i=0, i2=0;
 	while (i < (int)len) {
-		fm->now_r += ((int)buf[i]   - 128);
-		fm->now_j += ((int)buf[i+1] - 128);
+		fm->now_r += ((int)buf[i]   - 127);
+		fm->now_j += ((int)buf[i+1] - 127);
 		i += 2;
 		fm->prev_index++;
 		if (fm->prev_index < fm->downsample) {
@@ -254,8 +254,8 @@ void low_pass_fir(struct fm_state *fm, unsigned char *buf, uint32_t len)
 	int i=0, i2=0, i3=0;
 	while (i < (int)len) {
 		i3 = fm->prev_index;
-		fm->now_r += ((int)buf[i]   - 128) * fm->fir[i3] * fm->downsample / fm->fir_sum;
-		fm->now_j += ((int)buf[i+1] - 128) * fm->fir[i3] * fm->downsample / fm->fir_sum;
+		fm->now_r += ((int)buf[i]   - 127) * fm->fir[i3] * fm->downsample / fm->fir_sum;
+		fm->now_j += ((int)buf[i+1] - 127) * fm->fir[i3] * fm->downsample / fm->fir_sum;
 		i += 2;
 		fm->prev_index++;
 		if (fm->prev_index < fm->downsample) {
@@ -679,24 +679,30 @@ static void *demod_thread_fn(void *arg)
 	return 0;
 }
 
-double atofs(char* f)
+double atofs(char *f)
 /* standard suffixes */
 {
-	char* chop;
+	char last;
+	int len;
 	double suff = 1.0;
-	chop = malloc((strlen(f)+1)*sizeof(char));
-	strncpy(chop, f, strlen(f)-1);
-	switch (f[strlen(f)-1]) {
+	len = strlen(f);
+	last = f[len-1];
+	f[len-1] = '\0';
+	switch (last) {
+		case 'g':
 		case 'G':
 			suff *= 1e3;
+		case 'm':
 		case 'M':
 			suff *= 1e3;
 		case 'k':
+		case 'K':
 			suff *= 1e3;
-			suff *= atof(chop);}
-	free(chop);
-	if (suff != 1.0) {
-		return suff;}
+			suff *= atof(f);
+			f[len-1] = last;
+			return suff;
+	}
+	f[len-1] = last;
 	return atof(f);
 }
 
@@ -764,7 +770,7 @@ int main(int argc, char **argv)
 	pthread_rwlock_init(&data_rw, NULL);
 	pthread_mutex_init(&data_mutex, NULL);
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRDC")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRDCh")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = atoi(optarg);
@@ -853,6 +859,7 @@ int main(int argc, char **argv)
 		case 'R':
 			fm.mode_demod = &raw_demod;
 			break;
+		case 'h':
 		default:
 			usage();
 			break;
