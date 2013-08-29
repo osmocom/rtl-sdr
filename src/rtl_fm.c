@@ -70,6 +70,7 @@
 #define MAXIMUM_OVERSAMPLE		16
 #define MAXIMUM_BUF_LENGTH		(MAXIMUM_OVERSAMPLE * DEFAULT_BUF_LENGTH)
 #define AUTO_GAIN			-100
+#define BUFFER_DUMP			4096
 
 #define FREQUENCIES_LIMIT		1000
 
@@ -587,7 +588,8 @@ static void optimal_settings(struct fm_state *fm, int freq, int hopping)
 
 void full_demod(struct fm_state *fm)
 {
-	int i, sr, freq_next, hop = 0;
+	uint8_t dump[BUFFER_DUMP];
+	int i, sr, freq_next, n_read, hop = 0;
 	pthread_rwlock_wrlock(&data_rw);
 	rotate_90(fm->buf, fm->buf_len);
 	if (fm->fir_enable) {
@@ -629,7 +631,9 @@ void full_demod(struct fm_state *fm)
 		fm->squelch_hits = fm->conseq_squelch + 1;  /* hair trigger */
 		/* wait for settling and flush buffer */
 		usleep(5000);
-		rtlsdr_read_sync(dev, NULL, 4096, NULL);
+		rtlsdr_read_sync(dev, &dump, BUFFER_DUMP, &n_read);
+		if (n_read != BUFFER_DUMP) {
+			fprintf(stderr, "Error: bad retune.\n");}
 	}
 }
 
