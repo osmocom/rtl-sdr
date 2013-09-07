@@ -32,13 +32,15 @@
  *       scale squelch to other input parameters
  *       test all the demodulations
  *       pad output on hop
- *       nearest gain approx
  *       frequency ranges could be stored better
  *       scaled AM demod amplification
  *       auto-hop after time limit
  *       peak detector to tune onto stronger signals
  *       use slower sample rates (250k) for nbfm
  *       offset tuning
+ *       fifo for active hop frequency
+ *       clips
+ *       real squelch math
  */
 
 #include <errno.h>
@@ -150,10 +152,16 @@ void usage(void)
 		"\t[-U enables USB mode (default: off)]\n"
 		//"\t[-D enables DSB mode (default: off)]\n"
 		"\t[-R enables raw mode (default: off, 2x16 bit output)]\n"
-		"\t[-F enables high quality FIR (default: off/square)]\n"
+		"\t[-F enables Hamming FIR (default: off/square)]\n"
 		"\t[-D enables de-emphasis (default: off)]\n"
 		"\t[-C enables DC blocking of output (default: off)]\n"
-		"\t[-A std/fast/lut choose atan math (default: std)]\n\n"
+		"\t[-A std/fast/lut choose atan math (default: std)]\n"
+		//"\t[-C clip_path (default: off)\n"
+		//"\t (create time stamped raw clips, requires squelch)\n"
+		//"\t (path must have '\%s' and will expand to date_time_freq)\n"
+		//"\t[-H hop_fifo (default: off)\n"
+		//"\t (fifo will contain the active frequency)\n"
+		"\n"
 		"Produces signed 16 bit ints, use Sox or aplay to hear them.\n"
 		"\trtl_fm ... - | play -t raw -r 24k -es -b 16 -c 1 -V1 -\n"
 		"\t             | aplay -r 24k -f S16_LE -t raw -c 1\n"
@@ -230,17 +238,18 @@ void low_pass(struct fm_state *fm, unsigned char *buf, uint32_t len)
 }
 
 void build_fir(struct fm_state *fm)
-/* for now, a simple triangle 
- * fancy FIRs are equally expensive, so use one */
+/* hamming */
 /* point = sum(sample[i] * fir[i] * fir_len / fir_sum) */
 {
+	double a, b, w, N1;
 	int i, len;
 	len = fm->downsample;
-	for(i = 0; i < (len/2); i++) {
-		fm->fir[i] = i;
-	}
-	for(i = len-1; i >= (len/2); i--) {
-		fm->fir[i] = len - i;
+	a = 25.0/46.0;
+	b = 21.0/46.0;
+	N1 = (double)(len-1);
+	for(i = 0; i < len; i++) {
+		w = a - b*cos(2*i*M_PI/N1);
+		fm->fir[i] = (int)(w * 255);
 	}
 	fm->fir_sum = 0;
 	for(i = 0; i < len; i++) {
@@ -255,13 +264,17 @@ void low_pass_fir(struct fm_state *fm, unsigned char *buf, uint32_t len)
 	int i=0, i2=0, i3=0;
 	while (i < (int)len) {
 		i3 = fm->prev_index;
-		fm->now_r += ((int)buf[i]   - 127) * fm->fir[i3] * fm->downsample / fm->fir_sum;
-		fm->now_j += ((int)buf[i+1] - 127) * fm->fir[i3] * fm->downsample / fm->fir_sum;
+		fm->now_r += ((int)buf[i]   - 127) * fm->fir[i3];
+		fm->now_j += ((int)buf[i+1] - 127) * fm->fir[i3];
 		i += 2;
 		fm->prev_index++;
 		if (fm->prev_index < fm->downsample) {
 			continue;
 		}
+		fm->now_r *= fm->downsample;
+		fm->now_j *= fm->downsample;
+		fm->now_r /= fm->fir_sum;
+		fm->now_j /= fm->fir_sum;
 		fm->signal[i2]   = fm->now_r; //* fm->output_scale;
 		fm->signal[i2+1] = fm->now_j; //* fm->output_scale;
 		fm->prev_index = 0;
@@ -730,6 +743,28 @@ void frequency_range(struct fm_state *fm, char *arg)
 	step[-1] = ':';
 }
 
+int nearest_gain(int target_gain)
+{
+	int i, err1, err2, count, close_gain;
+	int* gains;
+	count = rtlsdr_get_tuner_gains(dev, NULL);
+	if (count <= 0) {
+		return 0;
+	}
+	gains = malloc(sizeof(int) * count);
+	count = rtlsdr_get_tuner_gains(dev, gains);
+	close_gain = gains[0];
+	for (i=0; i<count; i++) {
+		err1 = abs(target_gain - close_gain);
+		err2 = abs(target_gain - gains[i]);
+		if (err2 < err1) {
+			close_gain = gains[i];
+		}
+	}
+	free(gains);
+	return close_gain;
+}
+
 void fm_init(struct fm_state *fm)
 {
 	fm->freqs[0] = 100000000;
@@ -952,6 +987,7 @@ int main(int argc, char **argv)
 		r = rtlsdr_set_tuner_gain_mode(dev, 0);
 	} else {
 		r = rtlsdr_set_tuner_gain_mode(dev, 1);
+		gain = nearest_gain(gain);
 		r = rtlsdr_set_tuner_gain(dev, gain);
 	}
 	if (r != 0) {
