@@ -258,9 +258,10 @@ void manchester(uint16_t *buf, int len)
 	uint16_t a=0, b=0;
 	uint16_t bit;
 	int i, i2, start, errors;
+	int maximum_i = len - 1;        // len-1 since we look at i and i+1
 	// todo, allow wrap across buffers
 	i = 0;
-	while (i < len) {
+	while (i < maximum_i) {
 		/* find preamble */
 		for ( ; i < (len - preamble_len); i++) {
 			if (!preamble(buf, i)) {
@@ -275,7 +276,7 @@ void manchester(uint16_t *buf, int len)
 		i2 = start = i;
 		errors = 0;
 		/* mark bits until encoding breaks */
-		for ( ; i < len; i+=2, i2++) {
+		for ( ; i < maximum_i; i+=2, i2++) {
 			bit = single_manchester(a, b, buf[i], buf[i+1]);
 			a = buf[i];
 			b = buf[i+1];
