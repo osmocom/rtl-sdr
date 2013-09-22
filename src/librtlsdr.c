@@ -66,6 +66,26 @@ enum rtlsdr_async_status {
 	RTLSDR_RUNNING
 };
 
+#define FIR_LEN 16
+
+/*
+ * FIR coefficients.
+ *
+ * The filter is running at XTal frequency. It is symmetric filter with 32
+ * coefficients. Only first 16 coefficients are specified, the other 16
+ * use the same values but in reversed order. The first coefficient in
+ * the array is the outer one, the last, the last is the inner one.
+ * First 8 coefficients are 8 bit signed integers, the next 8 coefficients
+ * are 12 bit signed integers. All coefficients have the same weight.
+ *
+ * Default FIR coefficients used for DAB/FM by the Windows driver,
+ * the DVB driver uses different ones
+ */
+static const int fir_default[FIR_LEN] = {
+	-54, -36, -41, -40, -32, -14, 14, 53,	/* 8 bit signed */
+	101, 156, 215, 273, 327, 372, 404, 421	/* 12 bit signed */
+};
+
 struct rtlsdr_dev {
 	libusb_context *ctx;
 	struct libusb_device_handle *devh;
@@ -79,6 +99,7 @@ struct rtlsdr_dev {
 	/* rtl demod context */
 	uint32_t rate; /* Hz */
 	uint32_t rtl_xtal; /* Hz */
+	int fir[FIR_LEN];
 	int direct_sampling;
 	/* tuner context */
 	enum rtlsdr_tuner tuner_type;
@@ -532,16 +553,42 @@ void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
 }
 
+int rtlsdr_set_fir(rtlsdr_dev_t *dev)
+{
+	uint8_t fir[20];
+
+	int i;
+	/* format: int8_t[8] */
+	for (i = 0; i < 8; ++i) {
+		const int val = dev->fir[i];
+		if (val < -128 || val > 127) {
+			return -1;
+		}
+		fir[i] = val;
+	}
+	/* format: int12_t[8] */
+	for (i = 0; i < 8; i += 2) {
+		const int val0 = dev->fir[8+i];
+		const int val1 = dev->fir[8+i+1];
+		if (val0 < -2048 || val0 > 2047 || val1 < -2048 || val1 > 2047) {
+			return -1;
+		}
+		fir[8+i*3/2] = val0 >> 4;
+		fir[8+i*3/2+1] = (val0 << 4) | ((val1 >> 8) & 0x0f);
+		fir[8+i*3/2+2] = val1;
+	}
+
+	for (i = 0; i < (int)sizeof(fir); i++) {
+		if (rtlsdr_demod_write_reg(dev, 1, 0x1c + i, fir[i], 1))
+				return -1;
+	}
+
+	return 0;
+}
+
 void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
 {
 	unsigned int i;
-
-	/* default FIR coefficients used for DAB/FM by the Windows driver,
-	 * the DVB driver uses different ones */
-	const uint8_t fir_coeff[] = {
-		0xca, 0xdc, 0xd7, 0xd8, 0xe0, 0xf2, 0x0e, 0x35, 0x06, 0x50,
-		0x9c, 0x0d, 0x71, 0x11, 0x14, 0x71, 0x74, 0x19, 0x41, 0xa5,
-	};
 
 	/* initialize USB */
 	rtlsdr_write_reg(dev, USBB, USB_SYSCTL, 0x09, 1);
@@ -564,9 +611,7 @@ void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
 	for (i = 0; i < 6; i++)
 		rtlsdr_demod_write_reg(dev, 1, 0x16 + i, 0x00, 1);
 
-	/* set FIR coefficients */
-	for (i = 0; i < sizeof (fir_coeff); i++)
-		rtlsdr_demod_write_reg(dev, 1, 0x1c + i, fir_coeff[i], 1);
+	rtlsdr_set_fir(dev);
 
 	/* enable SDR mode, disable DAGC (bit 5) */
 	rtlsdr_demod_write_reg(dev, 0, 0x19, 0x05, 1);
@@ -1344,6 +1389,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 		return -ENOMEM;
 
 	memset(dev, 0, sizeof(rtlsdr_dev_t));
+	memcpy(dev->fir, fir_default, sizeof(fir_default));
 
 	libusb_init(&dev->ctx);
 
