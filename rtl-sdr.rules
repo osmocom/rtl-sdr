@@ -87,6 +87,9 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1103", MODE:="066
 # MSI DigiVox Micro HD (FC2580)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1104", MODE:="0666"
 
+# DigitalNow Quad DVB-T PCI-E card (4x FC0012?)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6680", MODE:="0666"
+
 # Leadtek WinFast DTV Dongle mini D (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6f0f", MODE:="0666"
 
