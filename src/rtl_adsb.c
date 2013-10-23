@@ -68,7 +68,7 @@ uint16_t squares[256];
 uint8_t *buffer;  /* also abused for uint16_t */
 int verbose_output = 0;
 int short_output = 0;
-double quality = 1.0;
+int quality = 10;
 int allowed_errors = 5;
 FILE *file;
 int adsb_frame[14];
@@ -126,7 +126,7 @@ void display(int *frame, int len)
 	if (!short_output && len <= short_frame) {
 		return;}
 	df = (frame[0] >> 3) & 0x1f;
-	if (quality == 0.0 && !(df==11 || df==17 || df==18 || df==19)) {
+	if (quality == 0 && !(df==11 || df==17 || df==18 || df==19)) {
 		return;}
 	fprintf(file, "*");
 	for (i=0; i<((len+7)/8); i++) {
@@ -181,10 +181,10 @@ inline uint16_t single_manchester(uint16_t a, uint16_t b, uint16_t c, uint16_t d
 	bit_p = a > b;
 	bit   = c > d;
 
-	if (quality == 0.0) {
+	if (quality == 0) {
 		return bit;}
 
-	if (quality == 0.5) {
+	if (quality == 5) {
 		if ( bit &&  bit_p && b > c) {
 			return BADSAMPLE;}
 		if (!bit && !bit_p && b < c) {
@@ -192,7 +192,7 @@ inline uint16_t single_manchester(uint16_t a, uint16_t b, uint16_t c, uint16_t d
 		return bit;
 	}
 
-	if (quality == 1.0) {
+	if (quality == 10) {
 		if ( bit &&  bit_p && c > b) {
 			return 1;}
 		if ( bit && !bit_p && d < b) {
@@ -391,7 +391,7 @@ int main(int argc, char **argv)
 			allowed_errors = atoi(optarg);
 			break;
 		case 'Q':
-			quality = atof(optarg);
+			quality = (int)(atof(optarg) * 10);
 			break;
 		default:
 			usage();
