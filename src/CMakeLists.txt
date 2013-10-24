@@ -117,7 +117,7 @@ endif()
 
 if(WIN32)
 target_link_libraries(rtl_sdr libgetopt_static)
-target_link_libraries(rtl_tcp libgetopt_static)
+target_link_libraries(rtl_tcp ws2_32 libgetopt_static)
 target_link_libraries(rtl_test libgetopt_static)
 target_link_libraries(rtl_fm libgetopt_static)
 target_link_libraries(rtl_eeprom libgetopt_static)

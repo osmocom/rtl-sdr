@@ -25,7 +25,7 @@
 #ifndef _WIN32
 #include <unistd.h>
 #else
-#include <Windows.h>
+#include <windows.h>
 #include <io.h>
 #include <fcntl.h>
 #include "getopt/getopt.h"

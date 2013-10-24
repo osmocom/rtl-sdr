@@ -33,7 +33,7 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #else
-#include <WinSock2.h>
+#include <winsock2.h>
 #include "getopt/getopt.h"
 #endif
 
@@ -109,7 +109,11 @@ int gettimeofday(struct timeval *tv, void* ignored)
 		tmp <<= 32;
 		tmp |= ft.dwLowDateTime;
 		tmp /= 10;
+#ifdef _MSC_VER
 		tmp -= 11644473600000000Ui64;
+#else
+		tmp -= 11644473600000000ULL;
+#endif
 		tv->tv_sec = (long)(tmp / 1000000UL);
 		tv->tv_usec = (long)(tmp % 1000000UL);
 	}
