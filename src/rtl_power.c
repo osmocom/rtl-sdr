@@ -34,9 +34,9 @@
  *	general astronomy usefulness
  *	multiple dongles
  *	multiple FFT workers
- *	fft bins smaller than 61Hz
  *	bandwidths smaller than 1MHz
  *	check edge cropping for off-by-one and rounding errors
+ *	1.8MS/s for hiding xtal harmonics
  */
 
 #include <errno.h>
@@ -64,11 +64,7 @@
 
 #include "rtl-sdr.h"
 
-#define DEFAULT_SAMPLE_RATE		24000
-#define DEFAULT_ASYNC_BUF_NUMBER	32
 #define DEFAULT_BUF_LENGTH		(1 * 16384)
-#define MAXIMUM_OVERSAMPLE		16
-#define MAXIMUM_BUF_LENGTH		(MAXIMUM_OVERSAMPLE * DEFAULT_BUF_LENGTH)
 #define AUTO_GAIN			-100
 #define BUFFER_DUMP			(1<<12)
 
@@ -91,7 +87,6 @@ struct tuning_state
 	int bin_e;
 	long *avg;  /* length == 2^bin_e */
 	int samples;
-	long mega_samples;
 	//pthread_rwlock_t avg_lock;
 	//pthread_mutex_t avg_mutex;
 	/* having the iq buffer here is wasteful, but will avoid contention */
@@ -113,7 +108,7 @@ void usage(void)
 		"Use:\trtl_power -f freq_range [-options] [filename]\n"
 		"\t-f lower:upper:bin_size [Hz]\n"
 		"\t (bin size is a maximum, smaller more convenient bins\n"
-		"\t  will be used.  valid range 61-2M)\n"
+		"\t  will be used.  valid range 1Hz - 2MHz)\n"
 		"\t[-i integration_interval (default: 10 seconds)]\n"
 		"\t (buggy if a full sweep takes longer than the interval)\n"
 		"\t[-1 enables single-shot mode (default: off)]\n"
@@ -145,10 +140,9 @@ void usage(void)
 		"\trtl_power -f ... -i 15m -1 log.csv\n"
 		"\t (integrate for 15 minutes and exit afterwards)\n"
 		"\trtl_power -f ... -e 1h | gzip > log.csv.gz\n"
-		"\t (collect data for one hour and compress it on the fly)\n"
-		"Convert CSV to a waterfall graphic with\n"
-		"\thttp://kmkeen.com/tmp/heatmap.py.txt\n"
-		"");
+		"\t (collect data for one hour and compress it on the fly)\n\n"
+		"Convert CSV to a waterfall graphic with:\n"
+		"\thttp://kmkeen.com/tmp/heatmap.py.txt\n");
 	exit(1);
 }
 
@@ -157,8 +151,8 @@ BOOL WINAPI
 sighandler(int signum)
 {
 	if (CTRL_C_EVENT == signum) {
-		fprintf(stderr, "Signal caught, exiting!\n");
-		do_exit = 1;
+		do_exit++;
+		multi_bail();
 		return TRUE;
 	}
 	return FALSE;
@@ -166,10 +160,22 @@ sighandler(int signum)
 #else
 static void sighandler(int signum)
 {
-	fprintf(stderr, "Signal caught, exiting!\n");
-	do_exit = 1;
+	do_exit++;
+	multi_bail();
 }
 #endif
+
+void multi_bail(void)
+{
+	if (do_exit == 1)
+	{
+		fprintf(stderr, "Signal caught, finishing scan pass.\n");
+	}
+	if (do_exit >= 2)
+	{
+		fprintf(stderr, "Signal caught, aborting immediately.\n");
+	}
+}
 
 /* more cond dumbness */
 #define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
@@ -205,7 +211,7 @@ inline int16_t FIX_MPY(int16_t a, int16_t b)
 	return (c >> 1) + b;
 }
 
-int fix_fft(int16_t iq[], int16_t m)
+int fix_fft(int16_t iq[], int m)
 /* interleaved iq[], 0 <= n < 2**m, changes in place */
 {
 	int mr, nn, i, j, l, k, istep, n, shift;
@@ -367,8 +373,6 @@ void rms_power(struct tuning_state *ts)
 
 	ts->avg[0] += p;
 	ts->samples += 1;
-	/* complex pairs, half length */
-	ts->mega_samples += (long)(buf_len/2);
 }
 
 double atofs(char *f)
@@ -522,7 +526,6 @@ void frequency_range(char *arg, double crop)
 		ts->rate = bw_used;
 		ts->bin_e = bin_e;
 		ts->samples = 0;
-		ts->mega_samples = 0L;
 		ts->avg = (long*)malloc((1<<bin_e) * sizeof(long));
 		if (!ts->avg) {
 			fprintf(stderr, "Error: malloc.\n");
@@ -568,8 +571,8 @@ void scanner(void)
 	bin_len = 1 << bin_e;
 	buf_len = tunes[0].buf_len;
 	for (i=0; i<tune_count; i++) {
-		if (do_exit) {
-			break;}
+		if (do_exit >= 2)
+			{return;}
 		ts = &tunes[i];
 		f = (int)rtlsdr_get_center_freq(dev);
 		if (f != ts->freq) {
@@ -603,7 +606,7 @@ void scanner(void)
 
 void csv_dbm(struct tuning_state *ts, double crop)
 {
-	int i, len, i1, i2, bw2;
+	int i, len, i1, i2, bw2, bin_count;
 	long tmp;
 	double dbm;
 	len = 1 << ts->bin_e;
@@ -619,7 +622,8 @@ void csv_dbm(struct tuning_state *ts, double crop)
 		}
 	}
 	/* Hz low, Hz high, Hz step, samples, dbm, dbm, ... */
-	bw2 = (int)((double)ts->rate * (1.0-crop) * 0.5);
+	bin_count = (int)((double)len * (1.0 - crop));
+	bw2 = (int)(((double)ts->rate * (double)bin_count) / (len * 2));
 	fprintf(file, "%i, %i, %.2f, %i, ", ts->freq - bw2, ts->freq + bw2,
 		(double)ts->rate / (double)len, ts->samples);
 	// something seems off with the dbm math
@@ -642,7 +646,6 @@ void csv_dbm(struct tuning_state *ts, double crop)
 		ts->avg[i] = 0L;
 	}
 	ts->samples = 0;
-	ts->mega_samples = 0L;
 }
 
 int main(int argc, char **argv)
@@ -661,7 +664,7 @@ int main(int argc, char **argv)
 	int fft_threads = 1;
 	int smoothing = 0;
 	int single = 0;
-	double crop = 0.1;
+	double crop = 0.0;
 	char vendor[256], product[256], serial[256];
 	char *freq_optarg;
 	time_t next_tick;
