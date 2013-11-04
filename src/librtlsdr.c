@@ -184,13 +184,18 @@ int fc2580_set_gain_mode(void *dev, int manual) { return 0; }
 int r820t_init(void *dev) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	devt->r82xx_p.rtl_dev = dev;
-	devt->r82xx_c.i2c_addr = R820T_I2C_ADDR;
+
+	if (devt->tuner_type == RTLSDR_TUNER_R828D) {
+		devt->r82xx_c.i2c_addr = R828D_I2C_ADDR;
+		devt->r82xx_c.rafael_chip = CHIP_R828D;
+	} else {
+		devt->r82xx_c.i2c_addr = R820T_I2C_ADDR;
+		devt->r82xx_c.rafael_chip = CHIP_R820T;
+	}
 
 	rtlsdr_get_xtal_freq(devt, NULL, &devt->r82xx_c.xtal);
 
-	devt->r82xx_c.rafael_chip = CHIP_R820T;
 	devt->r82xx_c.max_i2c_msg_len = 2;
-	devt->r82xx_c.use_diplexer = 0;
 	devt->r82xx_c.use_predetect = 0;
 	devt->r82xx_p.cfg = &devt->r82xx_c;
 
@@ -214,6 +219,7 @@ int r820t_set_gain_mode(void *dev, int manual) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return r82xx_set_gain(&devt->r82xx_p, manual, 0);
 }
+
 /* definition order must match enum rtlsdr_tuner */
 static rtlsdr_tuner_iface_t tuners[] = {
 	{
@@ -238,6 +244,11 @@ static rtlsdr_tuner_iface_t tuners[] = {
 		fc2580_init, fc2580_exit,
 		_fc2580_set_freq, fc2580_set_bw, fc2580_set_gain, NULL,
 		fc2580_set_gain_mode
+	},
+	{
+		r820t_init, r820t_exit,
+		r820t_set_freq, r820t_set_bw, r820t_set_gain, NULL,
+		r820t_set_gain_mode
 	},
 	{
 		r820t_init, r820t_exit,
@@ -892,7 +903,7 @@ int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 				       63, 65, 67, 68, 70, 71, 179, 181, 182,
 				       184, 186, 188, 191, 197 };
 	const int fc2580_gains[] = { 0 /* no gain values */ };
-	const int r820t_gains[] = { 0, 9, 14, 27, 37, 77, 87, 125, 144, 157,
+	const int r82xx_gains[] = { 0, 9, 14, 27, 37, 77, 87, 125, 144, 157,
 				     166, 197, 207, 229, 254, 280, 297, 328,
 				     338, 364, 372, 386, 402, 421, 434, 439,
 				     445, 480, 496 };
@@ -918,7 +929,8 @@ int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 		ptr = fc2580_gains; len = sizeof(fc2580_gains);
 		break;
 	case RTLSDR_TUNER_R820T:
-		ptr = r820t_gains; len = sizeof(r820t_gains);
+	case RTLSDR_TUNER_R828D:
+		ptr = r82xx_gains; len = sizeof(r82xx_gains);
 		break;
 	default:
 		ptr = unknown_gains; len = sizeof(unknown_gains);
@@ -1103,7 +1115,8 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 			rtlsdr_set_i2c_repeater(dev, 0);
 		}
 
-		if (dev->tuner_type == RTLSDR_TUNER_R820T) {
+		if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
+		    (dev->tuner_type == RTLSDR_TUNER_R828D)) {
 			r |= rtlsdr_set_if_freq(dev, R82XX_IF_FREQ);
 
 			/* enable spectrum inversion */
@@ -1145,7 +1158,8 @@ int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 	if (!dev)
 		return -1;
 
-	if (dev->tuner_type == RTLSDR_TUNER_R820T)
+	if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
+	    (dev->tuner_type == RTLSDR_TUNER_R828D))
 		return -2;
 
 	if (dev->direct_sampling)
@@ -1432,25 +1446,17 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 		goto found;
 	}
 
-	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R820T_CHECK_ADDR);
-	if (reg == R820T_CHECK_VAL) {
+	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
+	if (reg == R82XX_CHECK_VAL) {
 		fprintf(stderr, "Found Rafael Micro R820T tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R820T;
-
-		/* disable Zero-IF mode */
-		rtlsdr_demod_write_reg(dev, 1, 0xb1, 0x1a, 1);
-
-		/* only enable In-phase ADC input */
-		rtlsdr_demod_write_reg(dev, 0, 0x08, 0x4d, 1);
-
-		/* the R820T uses 3.57 MHz IF for the DVB-T 6 MHz mode, and
-		 * 4.57 MHz for the 8 MHz mode */
-		rtlsdr_set_if_freq(dev, R82XX_IF_FREQ);
-
-		/* enable spectrum inversion */
-		rtlsdr_demod_write_reg(dev, 1, 0x15, 0x01, 1);
-
 		goto found;
+	}
+
+	reg = rtlsdr_i2c_read_reg(dev, R828D_I2C_ADDR, R82XX_CHECK_ADDR);
+	if (reg == R82XX_CHECK_VAL) {
+		fprintf(stderr, "Found Rafael Micro R828D tuner\n");
+		dev->tuner_type = RTLSDR_TUNER_R828D;
 	}
 
 	/* initialise GPIOs */
@@ -1476,13 +1482,34 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	}
 
 found:
-	if (dev->tuner_type == RTLSDR_TUNER_UNKNOWN) {
+	/* use the rtl clock value by default */
+	dev->tun_xtal = dev->rtl_xtal;
+	dev->tuner = &tuners[dev->tuner_type];
+
+	switch (dev->tuner_type) {
+	case RTLSDR_TUNER_R828D:
+		dev->tun_xtal = R828D_XTAL_FREQ;
+	case RTLSDR_TUNER_R820T:
+		/* disable Zero-IF mode */
+		rtlsdr_demod_write_reg(dev, 1, 0xb1, 0x1a, 1);
+
+		/* only enable In-phase ADC input */
+		rtlsdr_demod_write_reg(dev, 0, 0x08, 0x4d, 1);
+
+		/* the R82XX use 3.57 MHz IF for the DVB-T 6 MHz mode, and
+		 * 4.57 MHz for the 8 MHz mode */
+		rtlsdr_set_if_freq(dev, R82XX_IF_FREQ);
+
+		/* enable spectrum inversion */
+		rtlsdr_demod_write_reg(dev, 1, 0x15, 0x01, 1);
+		break;
+	case RTLSDR_TUNER_UNKNOWN:
 		fprintf(stderr, "No supported tuner found\n");
 		rtlsdr_set_direct_sampling(dev, 1);
+		break;
+	default:
+		break;
 	}
-
-	dev->tuner = &tuners[dev->tuner_type];
-	dev->tun_xtal = dev->rtl_xtal; /* use the rtl clock value by default */
 
 	if (dev->tuner->init)
 		r = dev->tuner->init(dev);

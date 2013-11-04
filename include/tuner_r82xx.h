@@ -26,8 +26,11 @@
 #define R82XX_H
 
 #define R820T_I2C_ADDR		0x34
-#define R820T_CHECK_ADDR	0x00
-#define R820T_CHECK_VAL		0x69
+#define R828D_I2C_ADDR		0x74
+#define R828D_XTAL_FREQ		16000000
+
+#define R82XX_CHECK_ADDR	0x00
+#define R82XX_CHECK_VAL		0x69
 
 #define R82XX_IF_FREQ		3570000
 
@@ -66,7 +69,6 @@ struct r82xx_config {
 	uint32_t xtal;
 	enum r82xx_chip rafael_chip;
 	unsigned int max_i2c_msg_len;
-	int use_diplexer;
 	int use_predetect;
 };
 
@@ -79,6 +81,7 @@ struct r82xx_priv {
 	uint16_t			pll;	/* kHz */
 	uint32_t			int_freq;
 	uint8_t				fil_cal_code;
+	uint8_t				input;
 	int				has_lock;
 	int				init_done;
 

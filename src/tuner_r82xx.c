@@ -31,9 +31,8 @@
 #include "tuner_r82xx.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-
-#define VCO_POWER_REF	0x02
-#define DIP_FREQ	32000000
+#define MHZ(x)		((x)*1000*1000)
+#define KHZ(x)		((x)*1000)
 
 /*
  * Static constants
@@ -430,13 +429,14 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	uint8_t mix_div = 2;
 	uint8_t div_buf = 0;
 	uint8_t div_num = 0;
+	uint8_t vco_power_ref = 2;
 	uint8_t refdiv2 = 0;
 	uint8_t ni, si, nint, vco_fine_tune, val;
 	uint8_t data[5];
 
 	/* Frequency in kHz */
 	freq_khz = (freq + 500) / 1000;
-	pll_ref = priv->cfg->xtal; // / 1000;
+	pll_ref = priv->cfg->xtal;
 	pll_ref_khz = (priv->cfg->xtal + 500) / 1000;
 
 	rc = r82xx_write_reg_mask(priv, 0x10, refdiv2, 0x10);
@@ -471,11 +471,14 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	if (rc < 0)
 		return rc;
 
+	if (priv->cfg->rafael_chip == CHIP_R828D)
+		vco_power_ref = 1;
+
 	vco_fine_tune = (data[4] & 0x30) >> 4;
 
-	if (vco_fine_tune > VCO_POWER_REF)
+	if (vco_fine_tune > vco_power_ref)
 		div_num = div_num - 1;
-	else if (vco_fine_tune < VCO_POWER_REF)
+	else if (vco_fine_tune < vco_power_ref)
 		div_num = div_num + 1;
 
 	rc = r82xx_write_reg_mask(priv, 0x10, div_num << 5, 0xe0);
@@ -486,8 +489,8 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	nint = vco_freq / (2 * pll_ref);
 	vco_fra = (vco_freq - 2 * pll_ref * nint) / 1000;
 
-	if (nint > 63) {
-		fprintf(stderr, "No valid PLL values for %u kHz!\n", freq);
+	if (nint > ((128 / vco_power_ref) - 1)) {
+		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
 		return -EINVAL;
 	}
 
@@ -545,6 +548,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	}
 
 	if (!(data[2] & 0x40)) {
+		printf("[R82XX] PLL not locked!\n");
 		priv->has_lock = 0;
 		return 0;
 	}
@@ -628,17 +632,6 @@ static int r82xx_sysfreq_sel(struct r82xx_priv *priv, uint32_t freq,
 		break;
 	}
 
-	if (priv->cfg->use_diplexer &&
-	   ((priv->cfg->rafael_chip == CHIP_R820T) ||
-	   (priv->cfg->rafael_chip == CHIP_R828S) ||
-	   (priv->cfg->rafael_chip == CHIP_R820C))) {
-		if (freq > DIP_FREQ)
-			air_cable1_in = 0x00;
-		else
-			air_cable1_in = 0x60;
-		cable2_in = 0x00;
-	}
-
 	if (priv->cfg->use_predetect) {
 		rc = r82xx_write_reg_mask(priv, 0x06, pre_dect, 0x40);
 		if (rc < 0)
@@ -658,6 +651,8 @@ static int r82xx_sysfreq_sel(struct r82xx_priv *priv, uint32_t freq,
 	if (rc < 0)
 		return rc;
 
+	priv->input = air_cable1_in;
+
 	/* Air-IN only for Astrometa */
 	rc = r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
 	if (rc < 0)
@@ -675,11 +670,6 @@ static int r82xx_sysfreq_sel(struct r82xx_priv *priv, uint32_t freq,
 	rc = r82xx_write_reg_mask(priv, 0x0a, filter_cur, 0x60);
 	if (rc < 0)
 		return rc;
-	/*
-	 * Original driver initializes regs 0x05 and 0x06 with the
-	 * same value again on this point. Probably, it is just an
-	 * error there
-	 */
 
 	/*
 	 * Set LNA
@@ -1088,8 +1078,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 {
 	int rc = -EINVAL;
 	uint32_t lo_freq = freq + priv->int_freq;
-
-	lo_freq = freq + priv->int_freq;
+	uint8_t air_cable1_in;
 
 	rc = r82xx_set_mux(priv, lo_freq);
 	if (rc < 0)
@@ -1098,6 +1087,18 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 	rc = r82xx_set_pll(priv, lo_freq);
 	if (rc < 0 || !priv->has_lock)
 		goto err;
+
+	/* switch between 'Cable1' and 'Air-In' inputs on sticks with
+	 * R828D tuner. We switch at 345 MHz, because that's where the
+	 * noise-floor has about the same level with identical LNA
+	 * settings. The original driver used 320 MHz. */
+	air_cable1_in = (freq > MHZ(345)) ? 0x00 : 0x60;
+
+	if ((priv->cfg->rafael_chip == CHIP_R828D) &&
+	    (air_cable1_in != priv->input)) {
+		priv->input = air_cable1_in;
+		rc = r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
+	}
 
 err:
 	if (rc < 0)
@@ -1234,8 +1235,6 @@ int r82xx_init(struct r82xx_priv *priv)
 		goto err;
 
 	rc = r82xx_sysfreq_sel(priv, 0, TUNER_DIGITAL_TV, SYS_DVBT);
-	if (rc < 0)
-		goto err;
 
 err:
 	if (rc < 0)
