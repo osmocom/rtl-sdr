@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <errno.h>
 
 #include "rtlsdr_i2c.h"
 #include "tuner_r82xx.h"
@@ -273,10 +272,10 @@ static int r82xx_write(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
 
 		if (rc != size + 1) {
 			fprintf(stderr, "%s: i2c wr failed=%d reg=%02x len=%d\n",
-				   __func__, rc, reg, size);
+				   __FUNCTION__, rc, reg, size);
 			if (rc < 0)
 				return rc;
-			return -EREMOTEIO;
+			return -1;
 		}
 
 		reg += size;
@@ -299,7 +298,7 @@ static int r82xx_read_cache_reg(struct r82xx_priv *priv, int reg)
 	if (reg >= 0 && reg < NUM_REGS)
 		return priv->regs[reg];
 	else
-		return -EINVAL;
+		return -1;
 }
 
 static int r82xx_write_reg_mask(struct r82xx_priv *priv, uint8_t reg, uint8_t val,
@@ -338,10 +337,10 @@ static int r82xx_read(struct r82xx_priv *priv, uint8_t reg, uint8_t *val, int le
 
 	if (rc != len) {
 		fprintf(stderr, "%s: i2c rd failed=%d reg=%02x len=%d\n",
-			   __func__, rc, reg, len);
+			   __FUNCTION__, rc, reg, len);
 		if (rc < 0)
 			return rc;
-		return -EREMOTEIO;
+		return -1;
 	}
 
 	/* Copy data to the output buffer */
@@ -491,7 +490,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 
 	if (nint > ((128 / vco_power_ref) - 1)) {
 		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
-		return -EINVAL;
+		return -1;
 	}
 
 	ni = (nint - 13) / 4;
@@ -1076,7 +1075,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 
 int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 {
-	int rc = -EINVAL;
+	int rc = -1;
 	uint32_t lo_freq = freq + priv->int_freq;
 	uint8_t air_cable1_in;
 
@@ -1102,7 +1101,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 
 err:
 	if (rc < 0)
-		fprintf(stderr, "%s: failed=%d\n", __func__, rc);
+		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);
 	return rc;
 }
 
@@ -1214,7 +1213,7 @@ static int r82xx_xtal_check(struct r82xx_priv *priv)
 	}
 
 	if (i == ARRAY_SIZE(r82xx_xtal_capacitor))
-		return -EINVAL;
+		return -1;
 
 	return r82xx_xtal_capacitor[i][1];
 }
@@ -1238,7 +1237,7 @@ int r82xx_init(struct r82xx_priv *priv)
 
 err:
 	if (rc < 0)
-		fprintf(stderr, "%s: failed=%d\n", __func__, rc);
+		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);
 	return rc;
 }
 
