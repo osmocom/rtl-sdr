@@ -1,6 +1,6 @@
 /*
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
- * Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
+ * Copyright (C) 2012-2013 by Steve Markgraf <steve@steve-m.de>
  * Copyright (C) 2012 by Dimitri Stolnikov <horiz0n@gmx.net>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -47,7 +47,7 @@
 #include "tuner_fc0012.h"
 #include "tuner_fc0013.h"
 #include "tuner_fc2580.h"
-#include "tuner_r820t.h"
+#include "tuner_r82xx.h"
 
 typedef struct rtlsdr_tuner_iface {
 	/* tuner interface */
@@ -89,6 +89,9 @@ struct rtlsdr_dev {
 	int corr; /* ppm */
 	int gain; /* tenth dB */
 	struct e4k_state e4k_s;
+	struct r82xx_config r82xx_c;
+	struct r82xx_priv r82xx_p;
+	/* status */
 	int dev_lost;
 	int driver_active;
 	unsigned int xfer_errors;
@@ -179,16 +182,38 @@ int fc2580_set_gain(void *dev, int gain) { return 0; }
 int fc2580_set_gain_mode(void *dev, int manual) { return 0; }
 
 int r820t_init(void *dev) {
-	int r = R828_Init(dev);
-	r820t_SetStandardMode(dev, DVB_T_6M);
-	return r;
-}
-int r820t_exit(void *dev) { return r820t_SetStandby(dev, 0); }
-int r820t_set_freq(void *dev, uint32_t freq) { return r820t_SetRfFreqHz(dev, freq); }
-int r820t_set_bw(void *dev, int bw) { return 0; }
-int r820t_set_gain(void *dev, int gain) { return R828_SetRfGain(dev, gain); }
-int r820t_set_gain_mode(void *dev, int manual) { return R828_RfGainMode(dev, manual); }
+	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
+	devt->r82xx_p.rtl_dev = dev;
+	devt->r82xx_c.i2c_addr = R820T_I2C_ADDR;
 
+	rtlsdr_get_xtal_freq(devt, NULL, &devt->r82xx_c.xtal);
+
+	devt->r82xx_c.rafael_chip = CHIP_R820T;
+	devt->r82xx_c.max_i2c_msg_len = 2;
+	devt->r82xx_c.use_diplexer = 0;
+	devt->r82xx_c.use_predetect = 0;
+	devt->r82xx_p.cfg = &devt->r82xx_c;
+
+	return r82xx_init(&devt->r82xx_p);
+}
+int r820t_exit(void *dev) {
+	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
+	return r82xx_standby(&devt->r82xx_p);
+}
+
+int r820t_set_freq(void *dev, uint32_t freq) {
+	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
+	return r82xx_set_freq(&devt->r82xx_p, freq);
+}
+int r820t_set_bw(void *dev, int bw) { return 0; }
+int r820t_set_gain(void *dev, int gain) {
+	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
+	return r82xx_set_gain(&devt->r82xx_p, 1, gain);
+}
+int r820t_set_gain_mode(void *dev, int manual) {
+	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
+	return r82xx_set_gain(&devt->r82xx_p, manual, 0);
+}
 /* definition order must match enum rtlsdr_tuner */
 static rtlsdr_tuner_iface_t tuners[] = {
 	{
@@ -652,8 +677,9 @@ int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32_t tuner_fr
 		else
 			dev->tun_xtal = tuner_freq;
 
-		/* read corrected clock value into e4k structure */
-		if (rtlsdr_get_xtal_freq(dev, NULL, &dev->e4k_s.vco.fosc))
+		/* read corrected clock value into e4k and r82xx structure */
+		if (rtlsdr_get_xtal_freq(dev, NULL, &dev->e4k_s.vco.fosc) ||
+		    rtlsdr_get_xtal_freq(dev, NULL, &dev->r82xx_c.xtal))
 			return -3;
 
 		/* update xtal-dependent settings */
@@ -829,8 +855,9 @@ int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
 
 	r |= rtlsdr_set_sample_freq_correction(dev, ppm);
 
-	/* read corrected clock value into e4k structure */
-	if (rtlsdr_get_xtal_freq(dev, NULL, &dev->e4k_s.vco.fosc))
+	/* read corrected clock value into e4k and r82xx structure */
+	if (rtlsdr_get_xtal_freq(dev, NULL, &dev->e4k_s.vco.fosc) ||
+	    rtlsdr_get_xtal_freq(dev, NULL, &dev->r82xx_c.xtal))
 		return -3;
 
 	if (dev->freq) /* retune to apply new correction value */
@@ -1077,7 +1104,7 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 		}
 
 		if (dev->tuner_type == RTLSDR_TUNER_R820T) {
-			r |= rtlsdr_set_if_freq(dev, R820T_IF_FREQ);
+			r |= rtlsdr_set_if_freq(dev, R82XX_IF_FREQ);
 
 			/* enable spectrum inversion */
 			r |= rtlsdr_demod_write_reg(dev, 1, 0x15, 0x01, 1);
@@ -1418,7 +1445,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 		/* the R820T uses 3.57 MHz IF for the DVB-T 6 MHz mode, and
 		 * 4.57 MHz for the 8 MHz mode */
-		rtlsdr_set_if_freq(dev, R820T_IF_FREQ);
+		rtlsdr_set_if_freq(dev, R82XX_IF_FREQ);
 
 		/* enable spectrum inversion */
 		rtlsdr_demod_write_reg(dev, 1, 0x15, 0x01, 1);

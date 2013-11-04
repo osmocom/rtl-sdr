@@ -26,7 +26,7 @@ add_library(rtlsdr_shared SHARED
     tuner_fc0012.c
     tuner_fc0013.c
     tuner_fc2580.c
-    tuner_r820t.c
+    tuner_r82xx.c
 )
 
 target_link_libraries(rtlsdr_shared
@@ -44,7 +44,7 @@ add_library(rtlsdr_static STATIC
     tuner_fc0012.c
     tuner_fc0013.c
     tuner_fc2580.c
-    tuner_r820t.c
+    tuner_r82xx.c
 )
 
 if(WIN32)
