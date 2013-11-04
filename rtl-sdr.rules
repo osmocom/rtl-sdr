@@ -42,6 +42,9 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="0ccd", ATTRS{idProduct}=="00e0", MODE:="066
 # PixelView PV-DT235U(RN) (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1554", ATTRS{idProduct}=="5020", MODE:="0666"
 
+# Astrometa DVB-T/DVB-T2 (R828D)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="15f4", ATTRS{idProduct}=="0131", MODE:="0666"
+
 # Compro Videomate U620F (E4000)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="185b", ATTRS{idProduct}=="0620", MODE:="0666"
 
