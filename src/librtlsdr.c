@@ -403,17 +403,6 @@ uint8_t rtlsdr_i2c_read_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t reg)
 	return data;
 }
 
-/* TODO clean this up again */
-int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val)
-{
-	return rtlsdr_i2c_write_reg((rtlsdr_dev_t*)e4k->rtl_dev, e4k->i2c_addr, reg, val);
-}
-
-uint8_t e4k_reg_read(struct e4k_state *e4k, uint8_t reg)
-{
-	return rtlsdr_i2c_read_reg((rtlsdr_dev_t*)e4k->rtl_dev, e4k->i2c_addr, reg);
-}
-
 int rtlsdr_i2c_write(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t *buffer, int len)
 {
 	uint16_t addr = i2c_addr;

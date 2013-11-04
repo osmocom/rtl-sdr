@@ -212,9 +212,6 @@ int e4k_if_filter_bw_set(struct e4k_state *e4k, enum e4k_if_filter filter,
 int e4k_if_filter_chan_enable(struct e4k_state *e4k, int on);
 int e4k_rf_filter_set(struct e4k_state *e4k);
 
-int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val);
-uint8_t e4k_reg_read(struct e4k_state *e4k, uint8_t reg);
-
 int e4k_manual_dc_offset(struct e4k_state *e4k, int8_t iofs, int8_t irange, int8_t qofs, int8_t qrange);
 int e4k_dc_offset_calibrate(struct e4k_state *e4k);
 int e4k_dc_offset_gen_table(struct e4k_state *e4k);

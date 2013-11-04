@@ -29,6 +29,7 @@
 
 #include <reg_field.h>
 #include <tuner_e4k.h>
+#include <rtlsdr_i2c.h>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -55,17 +56,19 @@ static const uint8_t width2mask[] = {
 /***********************************************************************
  * Register Access */
 
-#if 0
 /*! \brief Write a register of the tuner chip
  *  \param[in] e4k reference to the tuner
  *  \param[in] reg number of the register
  *  \param[in] val value to be written
  *  \returns 0 on success, negative in case of error
  */
-int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val)
+static int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val)
 {
-	/* FIXME */
-	return 0;
+	uint8_t data[2];
+	data[0] = reg;
+	data[1] = val;
+
+	return rtlsdr_i2c_write_fn(e4k->rtl_dev, e4k->i2c_addr, data, 2);
 }
 
 /*! \brief Read a register of the tuner chip
@@ -73,12 +76,18 @@ int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val)
  *  \param[in] reg number of the register
  *  \returns positive 8bit register contents on success, negative in case of error
  */
-int e4k_reg_read(struct e4k_state *e4k, uint8_t reg)
+static int e4k_reg_read(struct e4k_state *e4k, uint8_t reg)
 {
-	/* FIXME */
-	return 0;
+	uint8_t data = reg;
+
+	if (rtlsdr_i2c_write_fn(e4k->rtl_dev, e4k->i2c_addr, &data, 1) < 1)
+		return -1;
+
+	if (rtlsdr_i2c_read_fn(e4k->rtl_dev, e4k->i2c_addr, &data, 1) < 1)
+		return -1;
+
+	return data;
 }
-#endif
 
 /*! \brief Set or clear some (masked) bits inside a register
  *  \param[in] e4k reference to the tuner
