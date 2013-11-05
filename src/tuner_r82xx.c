@@ -1235,6 +1235,8 @@ int r82xx_init(struct r82xx_priv *priv)
 
 	rc = r82xx_sysfreq_sel(priv, 0, TUNER_DIGITAL_TV, SYS_DVBT);
 
+	priv->init_done = 1;
+
 err:
 	if (rc < 0)
 		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);
