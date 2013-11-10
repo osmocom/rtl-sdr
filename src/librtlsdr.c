@@ -301,6 +301,7 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x1b80, 0xd394, "DIKOM USB-DVBT HD" },
 	{ 0x1b80, 0xd395, "Peak 102569AGPK" },
 	{ 0x1b80, 0xd39d, "SVEON STV20 DVB-T USB & FM" },
+	{ 0x1b80, 0xd3b0, "SVEON STV21 DVB-T USB & FM" },
 };
 
 #define DEFAULT_BUF_NUMBER	32
