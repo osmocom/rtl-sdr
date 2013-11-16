@@ -195,7 +195,7 @@ int r820t_init(void *dev) {
 
 	rtlsdr_get_xtal_freq(devt, NULL, &devt->r82xx_c.xtal);
 
-	devt->r82xx_c.max_i2c_msg_len = 2;
+	devt->r82xx_c.max_i2c_msg_len = 8;
 	devt->r82xx_c.use_predetect = 0;
 	devt->r82xx_p.cfg = &devt->r82xx_c;
 
