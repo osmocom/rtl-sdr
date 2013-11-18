@@ -53,7 +53,9 @@
 #include <io.h>
 #include "getopt/getopt.h"
 #define usleep(x) Sleep(x/1000)
+#ifdef _MSC_VER
 #define round(x) (x > 0.0 ? floor(x + 0.5): ceil(x - 0.5))
+#endif
 #define _USE_MATH_DEFINES
 #endif
 
