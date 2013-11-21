@@ -102,12 +102,11 @@ static void sighandler(int signum)
 }
 #endif
 
-uint8_t bcnt, uninit = 1;
-
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	uint32_t i, lost = 0;
 	int64_t ns;
+	static uint8_t bcnt, uninit = 1;
 
 	if (uninit) {
 		bcnt = buf[0];
