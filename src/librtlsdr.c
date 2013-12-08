@@ -308,6 +308,7 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x1f4d, 0xc803, "Lifeview LV5TDeluxe" },
 	{ 0x1f4d, 0xd286, "MyGica TD312" },
 	{ 0x1f4d, 0xd803, "PROlectrix DV107669" },
+	{ 0x1b80, 0xd397, "KWorld KW-UB450-T USB DVB-T Pico TV" },
 	{ 0x1b80, 0xd398, "Zaapa ZT-MINDVBZP" },
 	{ 0x1b80, 0xd3a4, "Twintech UT-40" },
 	{ 0x1b80, 0xd3a8, "ASUS U3100MINI_PLUS_V2" },
