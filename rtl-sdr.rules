@@ -1,5 +1,5 @@
 #
-# Copyright 2012 Osmocom rtl-sdr project
+# Copyright 2012-2013 Osmocom rtl-sdr project
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 # original RTL2832U vid/pid (hama nano, for example)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2832", MODE:="0666"
 
-# ezcap EzTV668 (E4000)
+# RTL2832U OEM vid/pid, e.g. ezcap EzTV668 (E4000), Newsky TV28T (E4000/R820T) etc.
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", MODE:="0666"
 
 # Terratec Cinergy T Stick Black (rev 1) (FC0012)
