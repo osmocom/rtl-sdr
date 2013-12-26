@@ -1,7 +1,7 @@
 /*
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
  * Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
- * Copyright (C) 2012 by Hoernchen <la@tfc-server.de>
+ * Copyright (C) 2012-2013 by Hoernchen <la@tfc-server.de>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,7 +59,6 @@ static pthread_t tcp_worker_thread;
 static pthread_t command_thread;
 static pthread_cond_t exit_cond;
 static pthread_mutex_t exit_cond_lock;
-static volatile int dead[2] = {0, 0};
 
 static pthread_mutex_t ll_mutex;
 static pthread_cond_t cond;
@@ -82,7 +81,7 @@ int global_numq = 0;
 static struct llist *ll_buffers = 0;
 int llbuf_num=500;
 
-static int do_exit = 0;
+static volatile int do_exit = 0;
 
 void usage(void)
 {
@@ -135,10 +134,8 @@ sighandler(int signum)
 static void sighandler(int signum)
 {
 	fprintf(stderr, "Signal caught, exiting!\n");
-	if (!do_exit) {
-      rtlsdr_cancel_async(dev);
-      do_exit = 1;
-    }
+	rtlsdr_cancel_async(dev);
+	do_exit = 1;
 }
 #endif
 
@@ -210,7 +207,6 @@ static void *tcp_worker(void *arg)
 			pthread_mutex_unlock(&ll_mutex);
 			printf("worker cond timeout\n");
 			sighandler(0);
-			dead[0]=1;
 			pthread_exit(NULL);
 		}
 
@@ -230,23 +226,12 @@ static void *tcp_worker(void *arg)
 				r = select(s+1, NULL, &writefds, NULL, &tv);
 				if(r) {
 					bytessent = send(s,  &curelem->data[index], bytesleft, 0);
-					if (bytessent == SOCKET_ERROR) {
-                        perror("worker socket error");
-						sighandler(0);
-						dead[0]=1;
-						pthread_exit(NULL);
-					} else if (do_exit) {
-						printf("do_exit\n");
-						dead[0]=1;
-						pthread_exit(NULL);
-					} else {
-						bytesleft -= bytessent;
-						index += bytessent;
-					}
-				} else if(do_exit) {
+					bytesleft -= bytessent;
+					index += bytessent;
+				}
+				if(bytessent == SOCKET_ERROR || do_exit) {
 						printf("worker socket bye\n");
 						sighandler(0);
-						dead[0]=1;
 						pthread_exit(NULL);
 				}
 			}
@@ -306,22 +291,11 @@ static void *command_worker(void *arg)
 			r = select(s+1, &readfds, NULL, NULL, &tv);
 			if(r) {
 				received = recv(s, (char*)&cmd+(sizeof(cmd)-left), left, 0);
-				if(received == SOCKET_ERROR){
-                    perror("comm recv socket error");
-					sighandler(0);
-					dead[1]=1;
-					pthread_exit(NULL);
-				} else if(do_exit){
-					printf("do exit\n");
-					dead[1]=1;
-					pthread_exit(NULL);
-				} else {
-					left -= received;
-				}
-			} else if(do_exit) {
+				left -= received;
+			}
+			if(received == SOCKET_ERROR || do_exit) {
 				printf("comm recv bye\n");
 				sighandler(0);
-				dead[1] = 1;
 				pthread_exit(NULL);
 			}
 		}
@@ -528,12 +502,12 @@ int main(int argc, char **argv)
 	setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
 	bind(listensocket,(struct sockaddr *)&local,sizeof(local));
 
-	#ifdef _WIN32
+#ifdef _WIN32
 	ioctlsocket(listensocket, FIONBIO, &blockmode);
-	#else
+#else
 	r = fcntl(listensocket, F_GETFL, 0);
 	r = fcntl(listensocket, F_SETFL, r | O_NONBLOCK);
-	#endif
+#endif
 
 	while(1) {
 		printf("listening...\n");
@@ -586,13 +560,8 @@ int main(int argc, char **argv)
 
 		r = rtlsdr_read_async(dev, rtlsdr_callback, NULL, buf_num, 0);
 
-		if(!dead[0])
-			pthread_join(tcp_worker_thread, &status);
-		dead[0]=0;
-
-		if(!dead[1])
-			pthread_join(command_thread, &status);
-		dead[1]=0;
+		pthread_join(tcp_worker_thread, &status);
+		pthread_join(command_thread, &status);
 
 		closesocket(s);
 
@@ -615,9 +584,9 @@ out:
 	rtlsdr_close(dev);
 	closesocket(listensocket);
 	closesocket(s);
-	#ifdef _WIN32
+#ifdef _WIN32
 	WSACleanup();
-	#endif
+#endif
 	printf("bye!\n");
 	return r >= 0 ? r : -r;
 }
