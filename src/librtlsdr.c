@@ -297,6 +297,7 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x0ccd, 0x00b7, "Terratec Media Broadcast DAB Stick" },
 	{ 0x0ccd, 0x00b8, "Terratec BR DAB Stick" },
 	{ 0x0ccd, 0x00b9, "Terratec WDR DAB Stick" },
+	{ 0x0ccd, 0x00c0, "Terratec MuellerVerlag DAB Stick" },
 	{ 0x0ccd, 0x00c6, "Terratec Fraunhofer DAB Stick" },
 	{ 0x0ccd, 0x00d3, "Terratec Cinergy T Stick RC (Rev.3)" },
 	{ 0x0ccd, 0x00d7, "Terratec T Stick PLUS" },
