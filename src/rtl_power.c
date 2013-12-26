@@ -65,9 +65,14 @@
 
 #include "rtl-sdr.h"
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+
 #define DEFAULT_BUF_LENGTH		(1 * 16384)
 #define AUTO_GAIN			-100
 #define BUFFER_DUMP			(1<<12)
+
+#define MAXIMUM_RATE			2800000
+#define MINIMUM_RATE			1000000
 
 static volatile int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
@@ -96,6 +101,7 @@ struct tuning_state
 	/* having the iq buffer here is wasteful, but will avoid contention */
 	uint8_t *buf8;
 	int buf_len;
+	//int *comp_fir;
 	//pthread_rwlock_t buf_lock;
 	//pthread_mutex_t buf_mutex;
 };
@@ -106,6 +112,8 @@ struct tuning_state tunes[MAX_TUNES];
 int tune_count = 0;
 
 int boxcar = 1;
+int comp_fir_size = 0;
+int peak_hold = 0;
 
 void usage(void)
 {
@@ -114,7 +122,7 @@ void usage(void)
 		"Use:\trtl_power -f freq_range [-options] [filename]\n"
 		"\t-f lower:upper:bin_size [Hz]\n"
 		"\t (bin size is a maximum, smaller more convenient bins\n"
-		"\t  will be used.  valid range 1Hz - 2MHz)\n"
+		"\t  will be used.  valid range 1Hz - 2.8MHz)\n"
 		"\t[-i integration_interval (default: 10 seconds)]\n"
 		"\t (buggy if a full sweep takes longer than the interval)\n"
 		"\t[-1 enables single-shot mode (default: off)]\n"
@@ -134,8 +142,13 @@ void usage(void)
 		"\t[-c crop_percent (default: 0%%, recommended: 20%%-50%%)]\n"
 		"\t (discards data at the edges, 100%% discards everything)\n"
 		"\t (has no effect for bins larger than 1MHz)\n"
-		"\t[-F enables low-leakage downsample filter (default: off)]\n"
-		"\t (has bad roll off, try with '-c 50%%')\n"
+		"\t[-F fir_size (default: disabled)]\n"
+		"\t (enables low-leakage downsample filter,\n"
+		"\t  fir_size can be 0 or 9.  0 has bad roll off,\n"
+		"\t  try with '-c 50%%')\n"
+		"\t[-P enables peak hold (default: off)]\n"
+		"\t[-D enable direct sampling (default: off)]\n"
+		"\t[-O enable offset tuning (default: off)]\n"
 		"\n"
 		"CSV FFT output columns:\n"
 		"\tdate, time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...\n\n"
@@ -188,6 +201,23 @@ static void sighandler(int signum)
 /* more cond dumbness */
 #define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
 #define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
+
+/* {length, coef, coef, coef}  and scaled by 2^15
+   for now, only length 9, optimal way to get +85% bandwidth */
+#define CIC_TABLE_MAX 10
+int cic_9_tables[][10] = {
+	{0,},
+	{9, -156,  -97, 2798, -15489, 61019, -15489, 2798,  -97, -156},
+	{9, -128, -568, 5593, -24125, 74126, -24125, 5593, -568, -128},
+	{9, -129, -639, 6187, -26281, 77511, -26281, 6187, -639, -129},
+	{9, -122, -612, 6082, -26353, 77818, -26353, 6082, -612, -122},
+	{9, -120, -602, 6015, -26269, 77757, -26269, 6015, -602, -120},
+	{9, -120, -582, 5951, -26128, 77542, -26128, 5951, -582, -120},
+	{9, -119, -580, 5931, -26094, 77505, -26094, 5931, -580, -119},
+	{9, -119, -578, 5921, -26077, 77484, -26077, 5921, -578, -119},
+	{9, -119, -577, 5917, -26067, 77473, -26067, 5917, -577, -119},
+	{9, -199, -362, 5303, -25505, 77489, -25505, 5303, -362, -199},
+};
 
 /* FFT based on fix_fft.c by Roberts, Slaney and Bouras
    http://www.jjj.de/fft/fftpage.html
@@ -379,7 +409,11 @@ void rms_power(struct tuning_state *ts)
 	err = t * 2 * dc - dc * dc * buf_len;
 	p -= (long)round(err);
 
-	ts->avg[0] += p;
+	if (!peak_hold) {
+		ts->avg[0] += p;
+	} else {
+		ts->avg[0] = MAX(ts->avg[0], p);
+	}
 	ts->samples += 1;
 }
 
@@ -500,28 +534,29 @@ void frequency_range(char *arg, double crop)
 	step[-1] = ':';
 	downsample = 1;
 	downsample_passes = 0;
-	/* evenly sized ranges, as close to 2MHz as possible */
+	/* evenly sized ranges, as close to MAXIMUM_RATE as possible */
+	// todo, replace loop with algebra
 	for (i=1; i<1500; i++) {
 		bw_seen = (upper - lower) / i;
 		bw_used = (int)((double)(bw_seen) / (1.0 - crop));
-		if (bw_used > 2000000) {
+		if (bw_used > MAXIMUM_RATE) {
 			continue;}
 		tune_count = i;
 		break;
 	}
 	/* unless small bandwidth */
-	if (bw_used < 1000000) {
-		tune_count = 1;}
-	if (boxcar && bw_used < 1000000) {
-		downsample = 2000000 / bw_used;
+	if (bw_used < MINIMUM_RATE) {
+		tune_count = 1;
+		downsample = MAXIMUM_RATE / bw_used;
 		bw_used = bw_used * downsample;
 	}
-	while (bw_used < 1000000) {  /* not boxcar */
-		downsample_passes++;
+	if (!boxcar && downsample > 1) {
+		downsample_passes = (int)log2(downsample);
 		downsample = 1 << downsample_passes;
 		bw_used = (int)((double)(bw_seen * downsample) / (1.0 - crop));
 	}
 	/* number of bins is power-of-two, bin size is under limit */
+	// todo, replace loop with log2
 	for (i=1; i<=21; i++) {
 		bin_e = i;
 		bin_size = (double)bw_used / (double)((1<<i) * downsample);
@@ -529,7 +564,7 @@ void frequency_range(char *arg, double crop)
 			break;}
 	}
 	/* unless giant bins */
-	if (max_size >= 1000000) {
+	if (max_size >= MINIMUM_RATE) {
 		bw_seen = max_size;
 		bw_used = max_size;
 		tune_count = (upper - lower) / bw_seen;
@@ -624,7 +659,7 @@ void remove_dc(int16_t *data, int length)
 /* works on interleaved data */
 {
 	int i;
-	int16_t  ave;
+	int16_t ave;
 	long sum = 0L;
 	for (i=0; i < length; i+=2) {
 		sum += data[i];
@@ -634,6 +669,36 @@ void remove_dc(int16_t *data, int length)
 		return;}
 	for (i=0; i < length; i+=2) {
 		data[i] -= ave;
+	}
+}
+
+void generic_fir(int16_t *data, int length, int *fir)
+/* Okay, not at all generic.  Assumes length 9, fix that eventually. */
+{
+	int d, f, temp, sum;
+	int hist[9] = {0,};
+	/* cheat on the beginning, let it go unfiltered */
+	for (d=0; d<18; d+=2) {
+		hist[d/2] = data[d];
+	}
+	for (d=18; d<length; d+=2) {
+		temp = data[d];
+		sum = 0;
+		sum += (hist[0] + hist[8]) * fir[1];
+		sum += (hist[1] + hist[7]) * fir[2];
+		sum += (hist[2] + hist[6]) * fir[3];
+		sum += (hist[3] + hist[5]) * fir[4];
+		sum +=            hist[4]  * fir[5];
+		data[d] = (int16_t)(sum >> 15) ;
+		hist[0] = hist[1];
+		hist[1] = hist[2];
+		hist[2] = hist[3];
+		hist[3] = hist[4];
+		hist[4] = hist[5];
+		hist[5] = hist[6];
+		hist[6] = hist[7];
+		hist[7] = hist[8];
+		hist[8] = temp;
 	}
 }
 
@@ -647,7 +712,7 @@ void downsample_iq(int16_t *data, int length)
 
 void scanner(void)
 {
-	int i, j, j2, f, n_read, offset, bin_e, bin_len, buf_len, ds;
+	int i, j, j2, f, n_read, offset, bin_e, bin_len, buf_len, ds, ds_p;
 	int32_t w;
 	struct tuning_state *ts;
 	bin_e = tunes[0].bin_e;
@@ -673,22 +738,30 @@ void scanner(void)
 			fft_buf[j] = (int16_t)ts->buf8[j] - 127;
 		}
 		ds = ts->downsample;
-		if (boxcar) {
+		ds_p = ts->downsample_passes;
+		if (boxcar && ds > 1) {
 			j=2, j2=0;
 			while (j < buf_len) {
 				fft_buf[j2]   += fft_buf[j];
 				fft_buf[j2+1] += fft_buf[j+1];
+				fft_buf[j] = 0;
+				fft_buf[j+1] = 0;
 				j += 2;
 				if (j % (ds*2) == 0) {
 					j2 += 2;}
 			}
-		} else {  /* recursive */
-			for (j=0; j < ts->downsample_passes; j++) {
+		} else if (ds_p) {  /* recursive */
+			for (j=0; j < ds_p; j++) {
 				downsample_iq(fft_buf, buf_len >> j);
 			}
+			/* droop compensation */
+			if (comp_fir_size == 9 && ds_p <= CIC_TABLE_MAX) {
+				generic_fir(fft_buf, buf_len >> j, cic_9_tables[ds_p]);
+				generic_fir(fft_buf+1, (buf_len >> j)-1, cic_9_tables[ds_p]);
+			}
 		}
-		remove_dc(fft_buf, buf_len >> j);
-		remove_dc(fft_buf+1, (buf_len >> j) - 1);
+		remove_dc(fft_buf, buf_len / ds);
+		remove_dc(fft_buf+1, (buf_len / ds) - 1);
 		/* window function and fft */
 		for (offset=0; offset<(buf_len/ds); offset+=(2*bin_len)) {
 			// todo, let rect skip this
@@ -703,8 +776,14 @@ void scanner(void)
 				fft_buf[offset+j*2+1] = (int16_t)w;
 			}
 			fix_fft(fft_buf+offset, bin_e);
-			for (j=0; j<bin_len; j++) {
-				ts->avg[j] += (long) abs(fft_buf[offset+j*2]);
+			if (!peak_hold) {
+				for (j=0; j<bin_len; j++) {
+					ts->avg[j] += (long) abs(fft_buf[offset+j*2]);
+				}
+			} else {
+				for (j=0; j<bin_len; j++) {
+					ts->avg[j] = MAX((long) abs(fft_buf[offset+j*2]), ts->avg[j]);
+				}
 			}
 			ts->samples += ds;
 		}
@@ -773,6 +852,8 @@ int main(int argc, char **argv)
 	int fft_threads = 1;
 	int smoothing = 0;
 	int single = 0;
+	int direct_sampling = 0;
+	int offset_tuning = 0;
 	double crop = 0.0;
 	char vendor[256], product[256], serial[256];
 	char *freq_optarg;
@@ -784,7 +865,7 @@ int main(int argc, char **argv)
 	double (*window_fn)(int, int) = rectangle;
 	freq_optarg = "";
 
-	while ((opt = getopt(argc, argv, "f:i:s:t:d:g:p:e:w:c:1Fh")) != -1) {
+	while ((opt = getopt(argc, argv, "f:i:s:t:d:g:p:e:w:c:F:1PDOh")) != -1) {
 		switch (opt) {
 		case 'f': // lower:upper:bin_size
 			freq_optarg = strdup(optarg);
@@ -838,8 +919,18 @@ int main(int argc, char **argv)
 		case '1':
 			single = 1;
 			break;
+		case 'P':
+			peak_hold = 1;
+			break;
+		case 'D':
+			direct_sampling = 1;
+			break;
+		case 'O':
+			offset_tuning = 1;
+			break;
 		case 'F':
 			boxcar = 0;
+			comp_fir_size = atoi(optarg);
 			break;
 		case 'h':
 		default:
@@ -906,6 +997,24 @@ int main(int argc, char **argv)
 #else
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
+
+	if (direct_sampling) {
+		r = rtlsdr_set_direct_sampling(dev, 1);
+		if (r != 0) {
+			fprintf(stderr, "WARNING: Failed to set direct sampling mode.\n");
+		} else {
+			fprintf(stderr, "Direct sampling mode enabled.\n");
+		}
+	}
+
+	if (offset_tuning) {
+		r = rtlsdr_set_offset_tuning(dev, 1);
+		if (r != 0) {
+			fprintf(stderr, "WARNING: Failed to set offset tuning.\n");
+		} else {
+			fprintf(stderr, "Offset tuning mode enabled.\n");
+		}
+	}
 
 	/* Set the tuner gain */
 	if (gain == AUTO_GAIN) {
