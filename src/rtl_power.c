@@ -219,6 +219,13 @@ int cic_9_tables[][10] = {
 	{9, -199, -362, 5303, -25505, 77489, -25505, 5303, -362, -199},
 };
 
+#ifdef _MSC_VER
+double log2(double n)
+{
+	return log(n) / log(2.0);
+}
+#endif
+
 /* FFT based on fix_fft.c by Roberts, Slaney and Bouras
    http://www.jjj.de/fft/fftpage.html
    16 bit ints for everything
