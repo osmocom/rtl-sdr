@@ -1760,7 +1760,12 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 					  (void *)dev,
 					  BULK_TIMEOUT);
 
-		libusb_submit_transfer(dev->xfer[i]);
+		r = libusb_submit_transfer(dev->xfer[i]);
+		if (r < 0) {
+			fprintf(stderr, "Failed to submit transfer %i!\n", i);
+			dev->async_status = RTLSDR_CANCELING;
+			break;
+		}
 	}
 
 	while (RTLSDR_INACTIVE != dev->async_status) {
@@ -1784,7 +1789,10 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 
 				if (LIBUSB_TRANSFER_CANCELLED !=
 						dev->xfer[i]->status) {
-					libusb_cancel_transfer(dev->xfer[i]);
+					r = libusb_cancel_transfer(dev->xfer[i]);
+					if (r < 0)
+						continue;
+
 					next_status = RTLSDR_CANCELING;
 				}
 			}
