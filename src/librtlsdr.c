@@ -337,8 +337,6 @@ static rtlsdr_dongle_t known_devices[] = {
 #define MIN_RTL_XTAL_FREQ	(DEF_RTL_XTAL_FREQ - 1000)
 #define MAX_RTL_XTAL_FREQ	(DEF_RTL_XTAL_FREQ + 1000)
 
-#define MAX_SAMP_RATE		3200000
-
 #define CTRL_IN		(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
 #define CTRL_OUT	(LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
 #define CTRL_TIMEOUT	300
@@ -1053,20 +1051,24 @@ int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t samp_rate)
 {
 	int r = 0;
 	uint16_t tmp;
-	uint32_t rsamp_ratio;
+	uint32_t rsamp_ratio, real_rsamp_ratio;
 	double real_rate;
 
 	if (!dev)
 		return -1;
 
-	/* check for the maximum rate the resampler supports */
-	if (samp_rate > MAX_SAMP_RATE)
-		samp_rate = MAX_SAMP_RATE;
+	/* check if the rate is supported by the resampler */
+	if ((samp_rate <= 225000) || (samp_rate > 3200000) ||
+	   ((samp_rate > 300000) && (samp_rate <= 900000))) {
+		fprintf(stderr, "Invalid sample rate: %u Hz\n", samp_rate);
+		return -EINVAL;
+	}
 
 	rsamp_ratio = (dev->rtl_xtal * TWO_POW(22)) / samp_rate;
-	rsamp_ratio &= ~3;
+	rsamp_ratio &= 0x0ffffffc;
 
-	real_rate = (dev->rtl_xtal * TWO_POW(22)) / rsamp_ratio;
+	real_rsamp_ratio = rsamp_ratio | ((rsamp_ratio & 0x08000000) << 1);
+	real_rate = (dev->rtl_xtal * TWO_POW(22)) / real_rsamp_ratio;
 
 	if ( ((double)samp_rate) != real_rate )
 		fprintf(stderr, "Exact sample rate is: %f Hz\n", real_rate);
