@@ -40,6 +40,7 @@
 #include <pthread.h>
 
 #include "rtl-sdr.h"
+#include "convenience/convenience.h"
 
 #ifdef _WIN32
 #pragma comment(lib, "ws2_32.lib")
@@ -93,7 +94,8 @@ void usage(void)
 		"\t[-s samplerate in Hz (default: 2048000 Hz)]\n"
 		"\t[-b number of buffers (default: 32, set by library)]\n"
 		"\t[-n max number of linked list buffers to keep (default: 500)]\n"
-		"\t[-d device index (default: 0)]\n");
+		"\t[-d device index (default: 0)]\n"
+		"\t[-P ppm_error (default: 0)]\n");
 	exit(1);
 }
 
@@ -367,9 +369,11 @@ int main(int argc, char **argv)
 	int port = 1234;
 	uint32_t frequency = 100000000, samp_rate = 2048000;
 	struct sockaddr_in local, remote;
-	int device_count;
-	uint32_t dev_index = 0, buf_num = 0;
+	uint32_t buf_num = 0;
+	int dev_index = 0;
+	int dev_given = 0;
 	int gain = 0;
+	int ppm_error = 0;
 	struct llist *curelem,*prev;
 	pthread_attr_t attr;
 	void *status;
@@ -387,19 +391,20 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:")) != -1) {
 		switch (opt) {
 		case 'd':
-			dev_index = atoi(optarg);
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
 			break;
 		case 'f':
-			frequency = (uint32_t)atof(optarg);
+			frequency = (uint32_t)atofs(optarg);
 			break;
 		case 'g':
 			gain = (int)(atof(optarg) * 10); /* tenths of a dB */
 			break;
 		case 's':
-			samp_rate = (uint32_t)atof(optarg);
+			samp_rate = (uint32_t)atofs(optarg);
 			break;
 		case 'a':
 			addr = optarg;
@@ -413,6 +418,9 @@ int main(int argc, char **argv)
 		case 'n':
 			llbuf_num = atoi(optarg);
 			break;
+		case 'P':
+			ppm_error = atoi(optarg);
+			break;
 		default:
 			usage();
 			break;
@@ -422,21 +430,20 @@ int main(int argc, char **argv)
 	if (argc < optind)
 		usage();
 
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
-		exit(1);
+	if (!dev_given) {
+		dev_index = verbose_device_search("0");
 	}
 
-	printf("Found %d device(s).\n", device_count);
+	if (dev_index < 0) {
+	    exit(1);
+	}
 
-	rtlsdr_open(&dev, dev_index);
+	rtlsdr_open(&dev, (uint32_t)dev_index);
 	if (NULL == dev) {
 	fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
 		exit(1);
 	}
 
-	printf("Using %s\n", rtlsdr_get_device_name(dev_index));
 #ifndef _WIN32
 	sigact.sa_handler = sighandler;
 	sigemptyset(&sigact.sa_mask);
@@ -449,6 +456,10 @@ int main(int argc, char **argv)
 #else
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
+
+	/* Set the tuner error */
+	verbose_ppm_set(dev, ppm_error);
+
 	/* Set the sample rate */
 	r = rtlsdr_set_sample_rate(dev, samp_rate);
 	if (r < 0)

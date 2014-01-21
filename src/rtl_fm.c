@@ -68,6 +68,7 @@
 #include <libusb.h>
 
 #include "rtl-sdr.h"
+#include "convenience/convenience.h"
 
 #define DEFAULT_SAMPLE_RATE		24000
 #define DEFAULT_ASYNC_BUF_NUMBER	32
@@ -196,6 +197,13 @@ static void sighandler(int signum)
 /* more cond dumbness */
 #define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
 #define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
+
+#ifdef _MSC_VER
+double log2(double n)
+{
+	return log(n) / log(2.0);
+}
+#endif
 
 void rotate_90(unsigned char *buf, uint32_t len)
 /* 90 rotation is 1+0j, 0+1j, -1+0j, 0-1j
@@ -699,33 +707,6 @@ static void *demod_thread_fn(void *arg)
 	return 0;
 }
 
-double atofs(char *f)
-/* standard suffixes */
-{
-	char last;
-	int len;
-	double suff = 1.0;
-	len = strlen(f);
-	last = f[len-1];
-	f[len-1] = '\0';
-	switch (last) {
-		case 'g':
-		case 'G':
-			suff *= 1e3;
-		case 'm':
-		case 'M':
-			suff *= 1e3;
-		case 'k':
-		case 'K':
-			suff *= 1e3;
-			suff *= atof(f);
-			f[len-1] = last;
-			return suff;
-	}
-	f[len-1] = last;
-	return atof(f);
-}
-
 void frequency_range(struct fm_state *fm, char *arg)
 {
 	char *start, *stop, *step;
@@ -746,27 +727,6 @@ void frequency_range(struct fm_state *fm, char *arg)
 	step[-1] = ':';
 }
 
-int nearest_gain(int target_gain)
-{
-	int i, err1, err2, count, close_gain;
-	int* gains;
-	count = rtlsdr_get_tuner_gains(dev, NULL);
-	if (count <= 0) {
-		return 0;
-	}
-	gains = malloc(sizeof(int) * count);
-	count = rtlsdr_get_tuner_gains(dev, gains);
-	close_gain = gains[0];
-	for (i=0; i<count; i++) {
-		err1 = abs(target_gain - close_gain);
-		err2 = abs(target_gain - gains[i]);
-		if (err2 < err1) {
-			close_gain = gains[i];
-		}
-	}
-	free(gains);
-	return close_gain;
-}
 
 void fm_init(struct fm_state *fm)
 {
@@ -803,8 +763,8 @@ int main(int argc, char **argv)
 	int n_read, r, opt, wb_mode = 0;
 	int i, gain = AUTO_GAIN; // tenths of a dB
 	uint8_t *buffer;
-	uint32_t dev_index = 0;
-	int device_count;
+	int32_t dev_index = 0;
+	int dev_given = 0;
 	int ppm_error = 0;
 	char vendor[256], product[256], serial[256];
 	fm_init(&fm);
@@ -815,7 +775,8 @@ int main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:EFA:NWMULRDCh")) != -1) {
 		switch (opt) {
 		case 'd':
-			dev_index = atoi(optarg);
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
 			break;
 		case 'f':
 			if (fm.freq_len >= FREQUENCIES_LIMIT) {
@@ -938,18 +899,9 @@ int main(int argc, char **argv)
 	ACTUAL_BUF_LENGTH = lcm_post[fm.post_downsample] * DEFAULT_BUF_LENGTH;
 	buffer = malloc(ACTUAL_BUF_LENGTH * sizeof(uint8_t));
 
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
-		exit(1);
+	if (!dev_given) {
+		dev_index = verbose_device_search("0");
 	}
-
-	fprintf(stderr, "Found %d device(s):\n", device_count);
-	for (i = 0; i < device_count; i++) {
-		rtlsdr_get_device_usb_strings(i, vendor, product, serial);
-		fprintf(stderr, "  %d:  %s, %s, SN: %s\n", i, vendor, product, serial);
-	}
-	fprintf(stderr, "\n");
 
 	fprintf(stderr, "Using device %d: %s\n",
 		dev_index, rtlsdr_get_device_name(dev_index));
@@ -987,20 +939,13 @@ int main(int argc, char **argv)
 
 	/* Set the tuner gain */
 	if (gain == AUTO_GAIN) {
-		r = rtlsdr_set_tuner_gain_mode(dev, 0);
+		verbose_auto_gain(dev);
 	} else {
-		r = rtlsdr_set_tuner_gain_mode(dev, 1);
-		gain = nearest_gain(gain);
-		r = rtlsdr_set_tuner_gain(dev, gain);
+		gain = nearest_gain(dev, gain);
+		verbose_gain_set(dev, gain);
 	}
-	if (r != 0) {
-		fprintf(stderr, "WARNING: Failed to set tuner gain.\n");
-	} else if (gain == AUTO_GAIN) {
-		fprintf(stderr, "Tuner gain set to automatic.\n");
-	} else {
-		fprintf(stderr, "Tuner gain set to %0.2f dB.\n", gain/10.0);
-	}
-	r = rtlsdr_set_freq_correction(dev, ppm_error);
+
+	verbose_ppm_set(dev, ppm_error);
 
 	if (strcmp(filename, "-") == 0) { /* Write samples to stdout */
 		fm.file = stdout;
@@ -1016,9 +961,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Reset endpoint before we start reading from it (mandatory) */
-	r = rtlsdr_reset_buffer(dev);
-	if (r < 0) {
-		fprintf(stderr, "WARNING: Failed to reset buffers.\n");}
+	verbose_reset_buffer(dev);
 
 	pthread_create(&demod_thread, NULL, demod_thread_fn, (void *)(&fm));
 	/*rtlsdr_read_async(dev, rtlsdr_callback, (void *)(&fm),

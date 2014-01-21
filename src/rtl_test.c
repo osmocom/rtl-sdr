@@ -37,6 +37,7 @@
 #endif
 
 #include "rtl-sdr.h"
+#include "convenience/convenience.h"
 
 #define DEFAULT_SAMPLE_RATE		2048000
 #define DEFAULT_ASYNC_BUF_NUMBER	32
@@ -211,10 +212,10 @@ int main(int argc, char **argv)
 	int i, tuner_benchmark = 0;
 	int sync_mode = 0;
 	uint8_t *buffer;
-	uint32_t dev_index = 0;
+	int dev_index = 0;
+	int dev_given = 0;
 	uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
-	int device_count;
 	int count;
 	int gains[100];
 	int real_rate;
@@ -223,7 +224,8 @@ int main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "d:s:b:tpS::")) != -1) {
 		switch (opt) {
 		case 'd':
-			dev_index = atoi(optarg);
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
 			break;
 		case 's':
 			samp_rate = (uint32_t)atof(optarg);
@@ -259,22 +261,15 @@ int main(int argc, char **argv)
 
 	buffer = malloc(out_block_size * sizeof(uint8_t));
 
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
+	if (!dev_given) {
+		dev_index = verbose_device_search("0");
+	}
+
+	if (dev_index < 0) {
 		exit(1);
 	}
 
-	fprintf(stderr, "Found %d device(s):\n", device_count);
-	for (i = 0; i < device_count; i++)
-		fprintf(stderr, "  %d:  %s\n", i, rtlsdr_get_device_name(i));
-	fprintf(stderr, "\n");
-
-	fprintf(stderr, "Using device %d: %s\n",
-		dev_index,
-		rtlsdr_get_device_name(dev_index));
-
-	r = rtlsdr_open(&dev, dev_index);
+	r = rtlsdr_open(&dev, (uint32_t)dev_index);
 	if (r < 0) {
 		fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
 		exit(1);
@@ -299,9 +294,7 @@ int main(int argc, char **argv)
 	fprintf(stderr, "\n");
 
 	/* Set the sample rate */
-	r = rtlsdr_set_sample_rate(dev, samp_rate);
-	if (r < 0)
-		fprintf(stderr, "WARNING: Failed to set sample rate.\n");
+	verbose_set_sample_rate(dev, samp_rate);
 
 	if (tuner_benchmark) {
 		if (rtlsdr_get_tuner_type(dev) == RTLSDR_TUNER_E4000)
@@ -316,9 +309,7 @@ int main(int argc, char **argv)
 	r = rtlsdr_set_testmode(dev, 1);
 
 	/* Reset endpoint before we start reading from it (mandatory) */
-	r = rtlsdr_reset_buffer(dev);
-	if (r < 0)
-		fprintf(stderr, "WARNING: Failed to reset buffers.\n");
+	verbose_reset_buffer(dev);
 
 	if (ppm_benchmark && !sync_mode) {
 		fprintf(stderr, "Reporting PPM error measurement every %i seconds...\n", ppm_benchmark);

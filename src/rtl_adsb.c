@@ -41,6 +41,7 @@
 #include <libusb.h>
 
 #include "rtl-sdr.h"
+#include "convenience/convenience.h"
 
 #ifdef _WIN32
 #define sleep Sleep
@@ -362,10 +363,9 @@ int main(int argc, char **argv)
 	char *filename = NULL;
 	int n_read, r, opt;
 	int i, gain = AUTO_GAIN; /* tenths of a dB */
-	uint32_t dev_index = 0;
-	int device_count;
+	int dev_index = 0;
+	int dev_given = 0;
 	int ppm_error = 0;
-	char vendor[256], product[256], serial[256];
 	pthread_mutex_init(&data_ready, NULL);
 	squares_precompute();
 
@@ -373,7 +373,8 @@ int main(int argc, char **argv)
 	{
 		switch (opt) {
 		case 'd':
-			dev_index = atoi(optarg);
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
 			break;
 		case 'g':
 			gain = (int)(atof(optarg) * 10);
@@ -407,23 +408,15 @@ int main(int argc, char **argv)
 
 	buffer = malloc(DEFAULT_BUF_LENGTH * sizeof(uint8_t));
 
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
+	if (!dev_given) {
+		dev_index = verbose_device_search("0");
+	}
+
+	if (dev_index < 0) {
 		exit(1);
 	}
 
-	fprintf(stderr, "Found %d device(s):\n", device_count);
-	for (i = 0; i < device_count; i++) {
-		rtlsdr_get_device_usb_strings(i, vendor, product, serial);
-		fprintf(stderr, "  %d:  %s, %s, SN: %s\n", i, vendor, product, serial);
-	}
-	fprintf(stderr, "\n");
-
-	fprintf(stderr, "Using device %d: %s\n",
-		dev_index, rtlsdr_get_device_name(dev_index));
-
-	r = rtlsdr_open(&dev, dev_index);
+	r = rtlsdr_open(&dev, (uint32_t)dev_index);
 	if (r < 0) {
 		fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
 		exit(1);
@@ -456,49 +449,28 @@ int main(int argc, char **argv)
 
 	/* Set the tuner gain */
 	if (gain == AUTO_GAIN) {
-		r = rtlsdr_set_tuner_gain_mode(dev, 0);
+		verbose_auto_gain(dev);
 	} else {
-		r = rtlsdr_set_tuner_gain_mode(dev, 1);
-		r = rtlsdr_set_tuner_gain(dev, gain);
-	}
-	if (r != 0) {
-		fprintf(stderr, "WARNING: Failed to set tuner gain.\n");
-	} else if (gain == AUTO_GAIN) {
-		fprintf(stderr, "Tuner gain set to automatic.\n");
-	} else {
-		fprintf(stderr, "Tuner gain set to %0.2f dB.\n", gain/10.0);
+		gain = nearest_gain(dev, gain);
+		verbose_gain_set(dev, gain);
 	}
 
-	r = rtlsdr_set_freq_correction(dev, ppm_error);
+	verbose_ppm_set(dev, ppm_error);
 	r = rtlsdr_set_agc_mode(dev, 1);
 
 	/* Set the tuner frequency */
-	r = rtlsdr_set_center_freq(dev, ADSB_FREQ);
-	if (r < 0) {
-		fprintf(stderr, "WARNING: Failed to set center freq.\n");}
-	else {
-		fprintf(stderr, "Tuned to %u Hz.\n", ADSB_FREQ);}
+	verbose_set_frequency(dev, ADSB_FREQ);
 
 	/* Set the sample rate */
-	fprintf(stderr, "Sampling at %u Hz.\n", ADSB_RATE);
-	r = rtlsdr_set_sample_rate(dev, ADSB_RATE);
-	if (r < 0) {
-		fprintf(stderr, "WARNING: Failed to set sample rate.\n");}
+	verbose_set_sample_rate(dev, ADSB_RATE);
 
 	/* Reset endpoint before we start reading from it (mandatory) */
-	r = rtlsdr_reset_buffer(dev);
-	if (r < 0) {
-		fprintf(stderr, "WARNING: Failed to reset buffers.\n");}
-
-	/* flush old junk */
-	sleep(1);
-	rtlsdr_read_sync(dev, NULL, 4096, NULL);
+	verbose_reset_buffer(dev);
 
 	pthread_create(&demod_thread, NULL, demod_thread_fn, (void *)(NULL));
 	rtlsdr_read_async(dev, rtlsdr_callback, (void *)(NULL),
 			      DEFAULT_ASYNC_BUF_NUMBER,
 			      DEFAULT_BUF_LENGTH);
-
 
 	if (do_exit) {
 		fprintf(stderr, "\nUser cancel, exiting...\n");}

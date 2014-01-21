@@ -64,6 +64,7 @@
 #include <libusb.h>
 
 #include "rtl-sdr.h"
+#include "convenience/convenience.h"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
@@ -424,101 +425,6 @@ void rms_power(struct tuning_state *ts)
 	ts->samples += 1;
 }
 
-double atofs(char *f)
-/* standard suffixes */
-{
-	char last;
-	int len;
-	double suff = 1.0;
-	len = strlen(f);
-	last = f[len-1];
-	f[len-1] = '\0';
-	switch (last) {
-		case 'g':
-		case 'G':
-			suff *= 1e3;
-		case 'm':
-		case 'M':
-			suff *= 1e3;
-		case 'k':
-		case 'K':
-			suff *= 1e3;
-			suff *= atof(f);
-			f[len-1] = last;
-			return suff;
-	}
-	f[len-1] = last;
-	return atof(f);
-}
-
-double atoft(char *f)
-/* time suffixes */
-{
-	char last;
-	int len;
-	double suff = 1.0;
-	len = strlen(f);
-	last = f[len-1];
-	f[len-1] = '\0';
-	switch (last) {
-		case 'h':
-		case 'H':
-			suff *= 60;
-		case 'm':
-		case 'M':
-			suff *= 60;
-		case 's':
-		case 'S':
-			suff *= atof(f);
-			f[len-1] = last;
-			return suff;
-	}
-	f[len-1] = last;
-	return atof(f);
-}
-
-double atofp(char *f)
-/* percent suffixes */
-{
-	char last;
-	int len;
-	double suff = 1.0;
-	len = strlen(f);
-	last = f[len-1];
-	f[len-1] = '\0';
-	switch (last) {
-		case '%':
-			suff *= 0.01;
-			suff *= atof(f);
-			f[len-1] = last;
-			return suff;
-	}
-	f[len-1] = last;
-	return atof(f);
-}
-
-int nearest_gain(int target_gain)
-{
-	int i, err1, err2, count, close_gain;
-	int* gains;
-	count = rtlsdr_get_tuner_gains(dev, NULL);
-	if (count <= 0) {
-		return 0;
-	}
-	gains = malloc(sizeof(int) * count);
-	count = rtlsdr_get_tuner_gains(dev, gains);
-	close_gain = gains[0];
-	for (i=0; i<count; i++) {
-		err1 = abs(target_gain - close_gain);
-		err2 = abs(target_gain - gains[i]);
-		if (err2 < err1) {
-			close_gain = gains[i];
-		}
-	}
-	free(gains);
-	return close_gain;
-}
-
 void frequency_range(char *arg, double crop)
 /* flesh out the tunes[] for scanning */
 // do we want the fewest ranges (easy) or the fewest bins (harder)?
@@ -852,8 +758,8 @@ int main(int argc, char **argv)
 	int f_set = 0;
 	int gain = AUTO_GAIN; // tenths of a dB
 	uint8_t *buffer;
-	uint32_t dev_index = 0;
-	int device_count;
+	int dev_index = 0;
+	int dev_given = 0;
 	int ppm_error = 0;
 	int interval = 10;
 	int fft_threads = 1;
@@ -862,7 +768,6 @@ int main(int argc, char **argv)
 	int direct_sampling = 0;
 	int offset_tuning = 0;
 	double crop = 0.0;
-	char vendor[256], product[256], serial[256];
 	char *freq_optarg;
 	time_t next_tick;
 	time_t time_now;
@@ -879,7 +784,8 @@ int main(int argc, char **argv)
 			f_set = 1;
 			break;
 		case 'd':
-			dev_index = atoi(optarg);
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
 			break;
 		case 'g':
 			gain = (int)(atof(optarg) * 10);
@@ -972,23 +878,15 @@ int main(int argc, char **argv)
 
 	fprintf(stderr, "Reporting every %i seconds\n", interval);
 
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
+	if (!dev_given) {
+		dev_index = verbose_device_search("0");
+	}
+
+	if (dev_index < 0) {
 		exit(1);
 	}
 
-	fprintf(stderr, "Found %d device(s):\n", device_count);
-	for (i = 0; i < device_count; i++) {
-		rtlsdr_get_device_usb_strings(i, vendor, product, serial);
-		fprintf(stderr, "  %d:  %s, %s, SN: %s\n", i, vendor, product, serial);
-	}
-	fprintf(stderr, "\n");
-
-	fprintf(stderr, "Using device %d: %s\n",
-		dev_index, rtlsdr_get_device_name(dev_index));
-
-	r = rtlsdr_open(&dev, dev_index);
+	r = rtlsdr_open(&dev, (uint32_t)dev_index);
 	if (r < 0) {
 		fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
 		exit(1);
@@ -1006,39 +904,22 @@ int main(int argc, char **argv)
 #endif
 
 	if (direct_sampling) {
-		r = rtlsdr_set_direct_sampling(dev, 1);
-		if (r != 0) {
-			fprintf(stderr, "WARNING: Failed to set direct sampling mode.\n");
-		} else {
-			fprintf(stderr, "Direct sampling mode enabled.\n");
-		}
+		verbose_direct_sampling(dev, 1);
 	}
 
 	if (offset_tuning) {
-		r = rtlsdr_set_offset_tuning(dev, 1);
-		if (r != 0) {
-			fprintf(stderr, "WARNING: Failed to set offset tuning.\n");
-		} else {
-			fprintf(stderr, "Offset tuning mode enabled.\n");
-		}
+		verbose_offset_tuning(dev);
 	}
 
 	/* Set the tuner gain */
 	if (gain == AUTO_GAIN) {
-		r = rtlsdr_set_tuner_gain_mode(dev, 0);
+		verbose_auto_gain(dev);
 	} else {
-		r = rtlsdr_set_tuner_gain_mode(dev, 1);
-		gain = nearest_gain(gain);
-		r = rtlsdr_set_tuner_gain(dev, gain);
+		gain = nearest_gain(dev, gain);
+		verbose_gain_set(dev, gain);
 	}
-	if (r != 0) {
-		fprintf(stderr, "WARNING: Failed to set tuner gain.\n");
-	} else if (gain == AUTO_GAIN) {
-		fprintf(stderr, "Tuner gain set to automatic.\n");
-	} else {
-		fprintf(stderr, "Tuner gain set to %0.2f dB.\n", gain/10.0);
-	}
-	r = rtlsdr_set_freq_correction(dev, ppm_error);
+
+	verbose_ppm_set(dev, ppm_error);
 
 	if (strcmp(filename, "-") == 0) { /* Write log to stdout */
 		file = stdout;
@@ -1055,9 +936,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Reset endpoint before we start reading from it (mandatory) */
-	r = rtlsdr_reset_buffer(dev);
-	if (r < 0) {
-		fprintf(stderr, "WARNING: Failed to reset buffers.\n");}
+	verbose_reset_buffer(dev);
 
 	/* actually do stuff */
 	rtlsdr_set_sample_rate(dev, (uint32_t)tunes[0].rate);

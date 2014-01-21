@@ -47,9 +47,16 @@ add_library(rtlsdr_static STATIC
     tuner_r82xx.c
 )
 
+add_library(convenience_static STATIC
+    convenience/convenience.c
+)
+
 if(WIN32)
 add_library(libgetopt_static STATIC
     getopt/getopt.c
+)
+target_link_libraries(convenience_static
+    rtlsdr_shared
 )
 endif()
 
@@ -76,31 +83,31 @@ add_executable(rtl_adsb rtl_adsb.c)
 add_executable(rtl_power rtl_power.c)
 set(INSTALL_TARGETS rtlsdr_shared rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_eeprom rtl_adsb rtl_power)
 
-target_link_libraries(rtl_sdr rtlsdr_shared
+target_link_libraries(rtl_sdr rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_tcp rtlsdr_shared
+target_link_libraries(rtl_tcp rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_test rtlsdr_shared
+target_link_libraries(rtl_test rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_fm rtlsdr_shared
+target_link_libraries(rtl_fm rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_eeprom rtlsdr_shared
+target_link_libraries(rtl_eeprom rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_adsb rtlsdr_shared
+target_link_libraries(rtl_adsb rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_power rtlsdr_shared
+target_link_libraries(rtl_power rtlsdr_shared convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
