@@ -623,6 +623,12 @@ void downsample_iq(int16_t *data, int length)
 	//remove_dc(data+1, length-1);
 }
 
+long real_conj(int16_t real, int16_t imag)
+/* real(n * conj(n)) */
+{
+	return ((long)real*(long)real + (long)imag*(long)imag);
+}
+
 void scanner(void)
 {
 	int i, j, j2, f, n_read, offset, bin_e, bin_len, buf_len, ds, ds_p;
@@ -691,11 +697,11 @@ void scanner(void)
 			fix_fft(fft_buf+offset, bin_e);
 			if (!peak_hold) {
 				for (j=0; j<bin_len; j++) {
-					ts->avg[j] += (long) abs(fft_buf[offset+j*2]);
+					ts->avg[j] += real_conj(fft_buf[offset+j*2], fft_buf[offset+j*2+1]);
 				}
 			} else {
 				for (j=0; j<bin_len; j++) {
-					ts->avg[j] = MAX((long) abs(fft_buf[offset+j*2]), ts->avg[j]);
+					ts->avg[j] = MAX(real_conj(fft_buf[offset+j*2], fft_buf[offset+j*2+1]), ts->avg[j]);
 				}
 			}
 			ts->samples += ds;
