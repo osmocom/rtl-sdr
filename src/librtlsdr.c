@@ -1,6 +1,6 @@
 /*
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
- * Copyright (C) 2012-2013 by Steve Markgraf <steve@steve-m.de>
+ * Copyright (C) 2012-2014 by Steve Markgraf <steve@steve-m.de>
  * Copyright (C) 2012 by Dimitri Stolnikov <horiz0n@gmx.net>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -96,6 +96,7 @@ struct rtlsdr_dev {
 	rtlsdr_read_async_cb_t cb;
 	void *cb_ctx;
 	enum rtlsdr_async_status async_status;
+	int async_cancel;
 	/* rtl demod context */
 	uint32_t rate; /* Hz */
 	uint32_t rtl_xtal; /* Hz */
@@ -1727,6 +1728,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 	unsigned int i;
 	int r = 0;
 	struct timeval tv = { 1, 0 };
+	struct timeval zerotv = { 0, 0 };
 	enum rtlsdr_async_status next_status = RTLSDR_INACTIVE;
 
 	if (!dev)
@@ -1736,6 +1738,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 		return -2;
 
 	dev->async_status = RTLSDR_RUNNING;
+	dev->async_cancel = 0;
 
 	dev->cb = cb;
 	dev->cb_ctx = ctx;
@@ -1771,7 +1774,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 	}
 
 	while (RTLSDR_INACTIVE != dev->async_status) {
-		r = libusb_handle_events_timeout(dev->ctx, &tv);
+		r = libusb_handle_events_timeout_completed(dev->ctx, &tv, &dev->async_cancel);
 		if (r < 0) {
 			/*fprintf(stderr, "handle_events returned: %d\n", r);*/
 			if (r == LIBUSB_ERROR_INTERRUPTED) /* stray signal */
@@ -1800,7 +1803,10 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			}
 
 			if (dev->dev_lost || RTLSDR_INACTIVE == next_status) {
-				libusb_handle_events_timeout(dev->ctx, &tv);
+				/* handle any events that still need to
+				 * be handled before exiting after we
+				 * just cancelled all transfers */
+				libusb_handle_events_timeout_completed(dev->ctx, &zerotv, NULL);
 				break;
 			}
 		}
@@ -1821,6 +1827,7 @@ int rtlsdr_cancel_async(rtlsdr_dev_t *dev)
 	/* if streaming, try to cancel gracefully */
 	if (RTLSDR_RUNNING == dev->async_status) {
 		dev->async_status = RTLSDR_CANCELING;
+		dev->async_cancel = 1;
 		return 0;
 	}
 
