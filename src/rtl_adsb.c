@@ -59,7 +59,8 @@
 #define BADSAMPLE    255
 
 static pthread_t demod_thread;
-static pthread_mutex_t data_ready;  /* locked when no data available */
+static pthread_cond_t ready;
+static pthread_mutex_t ready_m;
 static volatile int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 
@@ -76,6 +77,10 @@ int adsb_frame[14];
 #define preamble_len		16
 #define long_frame		112
 #define short_frame		56
+
+/* signals are not threadsafe by default */
+#define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
+#define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
 
 void usage(void)
 {
@@ -145,11 +150,11 @@ void display(int *frame, int len)
 }
 
 int abs8(int x)
-/* do not subtract 128 from the raw iq, this handles it */
+/* do not subtract 127 from the raw iq, this handles it */
 {
-	if (x >= 128) {
-		return x - 128;}
-	return 128 - x;
+	if (x >= 127) {
+		return x - 127;}
+	return 127 - x;
 }
 
 void squares_precompute(void)
@@ -338,15 +343,14 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	if (do_exit) {
 		return;}
 	memcpy(buffer, buf, len);
-	pthread_mutex_trylock(&data_ready);
-	pthread_mutex_unlock(&data_ready);
+	safe_cond_signal(&ready, &ready_m);
 }
 
 static void *demod_thread_fn(void *arg)
 {
 	int len;
 	while (!do_exit) {
-		pthread_mutex_lock(&data_ready);
+		safe_cond_wait(&ready, &ready_m);
 		len = magnitute(buffer, DEFAULT_BUF_LENGTH);
 		manchester((uint16_t*)buffer, len);
 		messages((uint16_t*)buffer, len);
@@ -366,7 +370,8 @@ int main(int argc, char **argv)
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;
-	pthread_mutex_init(&data_ready, NULL);
+	pthread_cond_init(&ready, NULL);
+	pthread_mutex_init(&ready_m, NULL);
 	squares_precompute();
 
 	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VS")) != -1)
@@ -477,7 +482,8 @@ int main(int argc, char **argv)
 	else {
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 	rtlsdr_cancel_async(dev);
-	pthread_mutex_destroy(&data_ready);
+	pthread_cond_destroy(&ready);
+	pthread_mutex_destroy(&ready_m);
 
 	if (file != stdout) {
 		fclose(file);}
