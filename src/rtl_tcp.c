@@ -276,7 +276,7 @@ struct command{
 #endif
 static void *command_worker(void *arg)
 {
-	int left, received;
+	int left, received = 0;
 	fd_set readfds;
 	struct command cmd={0, 0};
 	struct timeval tv= {1, 0};
