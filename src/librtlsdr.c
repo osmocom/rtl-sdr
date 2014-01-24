@@ -1775,7 +1775,11 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 	}
 
 	while (RTLSDR_INACTIVE != dev->async_status) {
+#ifdef HAVE_LIBUSB_HANDLE_EVENTS_TIMEOUT_COMPLETED
 		r = libusb_handle_events_timeout_completed(dev->ctx, &tv, &dev->async_cancel);
+#else
+		r = libusb_handle_events_timeout(dev->ctx, &tv);
+#endif
 		if (r < 0) {
 			/*fprintf(stderr, "handle_events returned: %d\n", r);*/
 			if (r == LIBUSB_ERROR_INTERRUPTED) /* stray signal */
@@ -1807,7 +1811,11 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 				/* handle any events that still need to
 				 * be handled before exiting after we
 				 * just cancelled all transfers */
+#ifdef HAVE_LIBUSB_HANDLE_EVENTS_TIMEOUT_COMPLETED
 				libusb_handle_events_timeout_completed(dev->ctx, &zerotv, NULL);
+#else
+				libusb_handle_events_timeout(dev->ctx, &zerotv);
+#endif
 				break;
 			}
 		}
