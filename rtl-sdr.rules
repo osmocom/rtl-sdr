@@ -21,6 +21,15 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2832", MODE:="066
 # RTL2832U OEM vid/pid, e.g. ezcap EzTV668 (E4000), Newsky TV28T (E4000/R820T) etc.
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", MODE:="0666"
 
+# DigitalNow Quad DVB-T PCI-E card (4x FC0012?)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6680", MODE:="0666"
+
+# Leadtek WinFast DTV Dongle mini D (FC0012)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6f0f", MODE:="0666"
+
+# Genius TVGo DVB-T03 USB dongle (Ver. B)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0458", ATTRS{idProduct}=="707f", MODE:="0666"
+
 # Terratec Cinergy T Stick Black (rev 1) (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0ccd", ATTRS{idProduct}=="00a9", MODE:="0666"
 
@@ -72,6 +81,48 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="185b", ATTRS{idProduct}=="0650", MODE:="066
 # Compro Videomate U680F (E4000)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="185b", ATTRS{idProduct}=="0680", MODE:="0666"
 
+# GIGABYTE GT-U7300 (FC0012)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d393", MODE:="0666"
+
+# DIKOM USB-DVBT HD
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d394", MODE:="0666"
+
+# Peak 102569AGPK (FC0012)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d395", MODE:="0666"
+
+# KWorld KW-UB450-T USB DVB-T Pico TV (TUA9001)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d397", MODE:="0666"
+
+# Zaapa ZT-MINDVBZP (FC0012)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d398", MODE:="0666"
+
+# SVEON STV20 DVB-T USB & FM (FC0012)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d39d", MODE:="0666"
+
+# Twintech UT-40 (FC0013)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3a4", MODE:="0666"
+
+# ASUS U3100MINI_PLUS_V2 (FC0013)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3a8", MODE:="0666"
+
+# SVEON STV27 DVB-T USB & FM (FC0013)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3af", MODE:="0666"
+
+# SVEON STV21 DVB-T USB & FM
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3b0", MODE:="0666"
+
+# Dexatek DK DVB-T Dongle (Logilink VG0002A) (FC2580)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1101", MODE:="0666"
+
+# Dexatek DK DVB-T Dongle (MSI DigiVox mini II V3.0)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1102", MODE:="0666"
+
+# Dexatek DK 5217 DVB-T Dongle (FC2580)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1103", MODE:="0666"
+
+# MSI DigiVox Micro HD (FC2580)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1104", MODE:="0666"
+
 # Sweex DVB-T USB (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1f4d", ATTRS{idProduct}=="a803", MODE:="0666"
 
@@ -86,51 +137,3 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="1f4d", ATTRS{idProduct}=="d286", MODE:="066
 
 # PROlectrix DV107669 (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1f4d", ATTRS{idProduct}=="d803", MODE:="0666"
-
-# KWorld KW-UB450-T USB DVB-T Pico TV (TUA9001)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d397", MODE:="0666"
-
-# Zaapa ZT-MINDVBZP (FC0012)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d398", MODE:="0666"
-
-# Twintech UT-40 (FC0013)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3a4", MODE:="0666"
-
-# ASUS U3100MINI_PLUS_V2 (FC0013)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3a8", MODE:="0666"
-
-# Dexatek DK DVB-T Dongle (Logilink VG0002A) (FC2580)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1101", MODE:="0666"
-
-# Dexatek DK DVB-T Dongle (MSI DigiVox mini II V3.0)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1102", MODE:="0666"
-
-# Dexatek DK 5217 DVB-T Dongle (FC2580)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1103", MODE:="0666"
-
-# MSI DigiVox Micro HD (FC2580)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1d19", ATTRS{idProduct}=="1104", MODE:="0666"
-
-# DigitalNow Quad DVB-T PCI-E card (4x FC0012?)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6680", MODE:="0666"
-
-# Leadtek WinFast DTV Dongle mini D (FC0012)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6f0f", MODE:="0666"
-
-# Genius TVGo DVB-T03 USB dongle (Ver. B)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="0458", ATTRS{idProduct}=="707f", MODE:="0666"
-
-# GIGABYTE GT-U7300 (FC0012)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d393", MODE:="0666"
-
-# DIKOM USB-DVBT HD
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d394", MODE:="0666"
-
-# Peak 102569AGPK (FC0012)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d395", MODE:="0666"
-
-# SVEON STV20 DVB-T USB & FM (FC0012)
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d39d", MODE:="0666"
-
-# SVEON STV21 DVB-T USB & FM
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d3b0", MODE:="0666"
