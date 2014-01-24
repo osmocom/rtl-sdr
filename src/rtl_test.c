@@ -149,6 +149,7 @@ static void ppm_clock_init(void)
 #endif
 }
 
+#ifndef _WIN32
 static int ppm_report(void)
 {
 	int real_rate;
@@ -158,6 +159,7 @@ static int ppm_report(void)
 	real_rate = (int)(ppm_total * 1000000000L / ns);
 	return (int)round((double)(1000000 * (real_rate - (int)samp_rate)) / (double)samp_rate);
 }
+#endif
 
 static void ppm_test(uint32_t len)
 {
