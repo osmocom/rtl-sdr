@@ -4,6 +4,7 @@ LIBVERSION=0:5:0
 
 AUTOMAKE_OPTIONS = subdir-objects
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
+noinst_HEADERS = convenience/convenience.h
 AM_CFLAGS = ${CFLAGS} -fPIC ${SYMBOL_VISIBILITY}
 
 lib_LTLIBRARIES = librtlsdr.la
