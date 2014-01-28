@@ -1503,6 +1503,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	if (reg == R82XX_CHECK_VAL) {
 		fprintf(stderr, "Found Rafael Micro R828D tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R828D;
+		goto found;
 	}
 
 	/* initialise GPIOs */
