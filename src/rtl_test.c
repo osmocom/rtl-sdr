@@ -48,28 +48,23 @@
 #define MHZ(x)	((x)*1000*1000)
 
 #define PPM_DURATION			10
+#define PPM_DUMP_TIME			5
+
+static enum {
+	NO_BENCHMARK,
+	TUNER_BENCHMARK,
+	PPM_BENCHMARK
+} test_mode = NO_BENCHMARK;
 
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 
-static int ppm_benchmark = 0;
-static int ppm_running = 0;
-static int64_t ppm_count = 0L;
-static int64_t ppm_total = 0L;
-uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
+static uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 
-long total_samples;
-long dropped_samples;
+static uint32_t total_samples = 0;
+static uint32_t dropped_samples = 0;
 
-#ifndef _WIN32
-static struct timespec ppm_start;
-static struct timespec ppm_recent;
-static struct timespec ppm_now;
-#endif
-
-#ifdef __APPLE__
-static struct timeval tv;
-#endif
+static unsigned int ppm_duration = PPM_DURATION;
 
 void usage(void)
 {
@@ -79,9 +74,9 @@ void usage(void)
 		"\t[-s samplerate (default: 2048000 Hz)]\n"
 		"\t[-d device_index (default: 0)]\n"
 		"\t[-t enable Elonics E4000 tuner benchmark]\n"
-		#ifndef _WIN32
-		"\t[-p enable PPM error measurement]\n"
-		#endif
+#ifndef _WIN32
+		"\t[-p[seconds] enable PPM error measurement (default: 10 seconds)]\n"
+#endif
 		"\t[-b output_block_size (default: 16 * 16384)]\n"
 		"\t[-S force sync output (default: async)]\n");
 	exit(1);
@@ -126,8 +121,8 @@ static void underrun_test(unsigned char *buf, uint32_t len, int mute)
 		bcnt++;
 	}
 
-	total_samples += (long)len;
-	dropped_samples += (long)lost;
+	total_samples += len;
+	dropped_samples += lost;
 	if (mute)
 		return;
 	if (lost)
@@ -135,77 +130,92 @@ static void underrun_test(unsigned char *buf, uint32_t len, int mute)
 
 }
 
-static void ppm_clock_init(void)
+#ifndef _WIN32
+static int ppm_gettime(struct timespec *ts)
 {
-#ifdef __APPLE__
-	gettimeofday(&tv, NULL);
-	ppm_recent.tv_sec = tv.tv_sec;
-	ppm_recent.tv_nsec = tv.tv_usec*1000;
-	ppm_start.tv_sec = tv.tv_sec;
-	ppm_start.tv_nsec = tv.tv_usec*1000;
-#elif __unix__
-	clock_gettime(CLOCK_REALTIME, &ppm_recent);
-	clock_gettime(CLOCK_REALTIME, &ppm_start);
+	int rv = ENOSYS;
+
+#ifdef __unix__
+	rv = clock_gettime(CLOCK_MONOTONIC, ts);
+#elif __APPLE__
+	struct timeval tv;
+
+	rv = gettimeofday(&tv, NULL);
+	ts->tv_sec = tv.tv_sec;
+	ts->tv_nsec = tv.tv_usec * 1000;
 #endif
+	return rv;
 }
 
-#ifndef _WIN32
-static int ppm_report(void)
+static int ppm_report(uint64_t nsamples, uint64_t interval)
 {
-	int real_rate;
-	int64_t ns;
-	ns = 1000000000L * (int64_t)(ppm_recent.tv_sec - ppm_start.tv_sec);
-	ns += (int64_t)(ppm_recent.tv_nsec - ppm_start.tv_nsec);
-	real_rate = (int)(ppm_total * 1000000000L / ns);
-	return (int)round((double)(1000000 * (real_rate - (int)samp_rate)) / (double)samp_rate);
+	double real_rate, ppm;
+
+	real_rate = nsamples * 1e9 / interval;
+	ppm = 1e6 * (real_rate / (double)samp_rate - 1.);
+	return (int)round(ppm);
 }
-#endif
 
 static void ppm_test(uint32_t len)
 {
-	int64_t ns;
+	static uint64_t nsamples = 0;
+	static uint64_t interval = 0;
+	static uint64_t nsamples_total = 0;
+	static uint64_t interval_total = 0;
+	struct timespec ppm_now;
+	static struct timespec ppm_recent;
+	static enum {
+		PPM_INIT_NO,
+		PPM_INIT_DUMP,
+		PPM_INIT_RUN
+	} ppm_init = PPM_INIT_NO;
 
-	ppm_count += (int64_t)len;
-#ifndef _WIN32
-	#ifndef __APPLE__
-	clock_gettime(CLOCK_REALTIME, &ppm_now);
-	#else
-	gettimeofday(&tv, NULL);
-	ppm_now.tv_sec = tv.tv_sec;
-	ppm_now.tv_nsec = tv.tv_usec*1000;
-	#endif
-	if (ppm_now.tv_sec - ppm_recent.tv_sec > PPM_DURATION) {
-		ns = 1000000000L * (int64_t)(ppm_now.tv_sec - ppm_recent.tv_sec);
-		ns += (int64_t)(ppm_now.tv_nsec - ppm_recent.tv_nsec);
-		printf("real sample rate: %i",
-		(int)((1000000000L * ppm_count / 2L) / ns));
-		#ifndef __APPLE__
-		clock_gettime(CLOCK_REALTIME, &ppm_recent);
-		#else
-		gettimeofday(&tv, NULL);
-		ppm_recent.tv_sec = tv.tv_sec;
-		ppm_recent.tv_nsec = tv.tv_usec*1000;
-		#endif
-		ppm_total += ppm_count / 2L;
-		ppm_count = 0L;
-		printf("  cumulative ppm: %i\n", ppm_report());
+	ppm_gettime(&ppm_now);
+	if (ppm_init != PPM_INIT_RUN) {
+		/*
+		 * Kyle Keen wrote:
+		 * PPM_DUMP_TIME throws out the first N seconds of data.
+		 * The dongle's PPM is usually very bad when first starting up,
+		 * typically incorrect by more than twice the final value.
+		 * Discarding the first few seconds allows the value to stabilize much faster.
+		*/
+		if (ppm_init == PPM_INIT_NO) {
+			ppm_recent.tv_sec = ppm_now.tv_sec + PPM_DUMP_TIME;
+			ppm_init = PPM_INIT_DUMP;
+			return;
+		}
+		if (ppm_init == PPM_INIT_DUMP && ppm_recent.tv_sec < ppm_now.tv_sec)
+			return;
+		ppm_recent.tv_sec = ppm_now.tv_sec;
+		ppm_recent.tv_nsec = ppm_now.tv_nsec;
+		ppm_init = PPM_INIT_RUN;
+		return;
 	}
-#endif
+	nsamples += (uint64_t)(len / 2UL);
+	interval = (uint64_t)(ppm_now.tv_sec - ppm_recent.tv_sec);
+	if (interval < ppm_duration)
+		return;
+	interval *= 1000000000UL;
+	interval += (int64_t)(ppm_now.tv_nsec - ppm_recent.tv_nsec);
+	nsamples_total += nsamples;
+	interval_total += interval;
+	printf("real sample rate: %i current PPM: %i cumulative PPM: %i\n",
+		(int)((1000000000UL * nsamples) / interval),
+		ppm_report(nsamples, interval),
+		ppm_report(nsamples_total, interval_total));
+	ppm_recent.tv_sec = ppm_now.tv_sec;
+	ppm_recent.tv_nsec = ppm_now.tv_nsec;
+	nsamples = 0;
 }
+#endif
 
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	underrun_test(buf, len, 0);
-
-	if (ppm_benchmark && !ppm_running) {
-		ppm_clock_init();
-		ppm_running = 1;
-		return;
-	}
-
-	if (ppm_benchmark) {
+#ifndef _WIN32
+	if (test_mode == PPM_BENCHMARK)
 		ppm_test(len);
-	}
+#endif
 }
 
 void e4k_benchmark(void)
@@ -259,9 +269,7 @@ int main(int argc, char **argv)
 #ifndef _WIN32
 	struct sigaction sigact;
 #endif
-	int n_read;
-	int r, opt;
-	int i, tuner_benchmark = 0;
+	int n_read, r, opt, i;
 	int sync_mode = 0;
 	uint8_t *buffer;
 	int dev_index = 0;
@@ -270,7 +278,7 @@ int main(int argc, char **argv)
 	int count;
 	int gains[100];
 
-	while ((opt = getopt(argc, argv, "d:s:b:tpS::")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:b:tp::Sh")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -283,14 +291,17 @@ int main(int argc, char **argv)
 			out_block_size = (uint32_t)atof(optarg);
 			break;
 		case 't':
-			tuner_benchmark = 1;
+			test_mode = TUNER_BENCHMARK;
 			break;
 		case 'p':
-			ppm_benchmark = PPM_DURATION;
+			test_mode = PPM_BENCHMARK;
+			if (optarg)
+				ppm_duration = atoi(optarg);
 			break;
 		case 'S':
 			sync_mode = 1;
 			break;
+		case 'h':
 		default:
 			usage();
 			break;
@@ -345,7 +356,7 @@ int main(int argc, char **argv)
 	/* Set the sample rate */
 	verbose_set_sample_rate(dev, samp_rate);
 
-	if (tuner_benchmark) {
+	if (test_mode == TUNER_BENCHMARK) {
 		if (rtlsdr_get_tuner_type(dev) == RTLSDR_TUNER_E4000)
 			e4k_benchmark();
 		else
@@ -360,12 +371,12 @@ int main(int argc, char **argv)
 	/* Reset endpoint before we start reading from it (mandatory) */
 	verbose_reset_buffer(dev);
 
-	if (ppm_benchmark && !sync_mode) {
-		fprintf(stderr, "Reporting PPM error measurement every %i seconds...\n", ppm_benchmark);
+	if ((test_mode == PPM_BENCHMARK) && !sync_mode) {
+		fprintf(stderr, "Reporting PPM error measurement every %i seconds...\n", ppm_duration);
 		fprintf(stderr, "Press ^C after a few minutes.\n");
 	}
 
-	if (!ppm_benchmark) {
+	if (test_mode == NO_BENCHMARK) {
 		fprintf(stderr, "\nInfo: This tool will continuously"
 				" read from the device, and report if\n"
 				"samples get lost. If you observe no "
@@ -397,11 +408,6 @@ int main(int argc, char **argv)
 	if (do_exit) {
 		fprintf(stderr, "\nUser cancel, exiting...\n");
 		fprintf(stderr, "Samples per million lost (minimum): %i\n", (int)(1000000L * dropped_samples / total_samples));
-#ifndef _WIN32
-		if (ppm_benchmark) {
-			printf("Cumulative PPM error: %i\n", ppm_report());
-		}
-#endif
 	}
 	else
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);
