@@ -403,7 +403,6 @@ void rms_power(struct tuning_state *ts)
 	uint8_t *buf = ts->buf8;
 	int buf_len = ts->buf_len;
 	long p, t;
-	int ln, lp;
 	double dc, err;
 
 	p = t = 0L;
@@ -588,7 +587,7 @@ void remove_dc(int16_t *data, int length)
 void generic_fir(int16_t *data, int length, int *fir)
 /* Okay, not at all generic.  Assumes length 9, fix that eventually. */
 {
-	int d, f, temp, sum;
+	int d, temp, sum;
 	int hist[9] = {0,};
 	/* cheat on the beginning, let it go unfiltered */
 	for (d=0; d<18; d+=2) {
@@ -760,10 +759,9 @@ int main(int argc, char **argv)
 	struct sigaction sigact;
 #endif
 	char *filename = NULL;
-	int i, length, n_read, r, opt, wb_mode = 0;
+	int i, length, r, opt, wb_mode = 0;
 	int f_set = 0;
 	int gain = AUTO_GAIN; // tenths of a dB
-	uint8_t *buffer;
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;

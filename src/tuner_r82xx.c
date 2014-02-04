@@ -765,7 +765,7 @@ static int r82xx_set_tv_standard(struct r82xx_priv *priv,
 {
 	int rc, i;
 	uint32_t if_khz, filt_cal_lo;
-	uint8_t data[5], val;
+	uint8_t data[5];
 	uint8_t filt_gain, img_r, filt_q, hp_cor, ext_enable, loop_through;
 	uint8_t lt_att, flt_ext_widest, polyfil_cur;
 	int need_calibration;

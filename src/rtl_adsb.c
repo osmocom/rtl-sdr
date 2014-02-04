@@ -306,8 +306,7 @@ void manchester(uint16_t *buf, int len)
 
 void messages(uint16_t *buf, int len)
 {
-	int i, i2, start, preamble_found;
-	int data_i, index, shift, frame_len;
+	int i, data_i, index, shift, frame_len;
 	// todo, allow wrap across buffers
 	for (i=0; i<len; i++) {
 		if (buf[i] > 1) {
@@ -365,8 +364,8 @@ int main(int argc, char **argv)
 	struct sigaction sigact;
 #endif
 	char *filename = NULL;
-	int n_read, r, opt;
-	int i, gain = AUTO_GAIN; /* tenths of a dB */
+	int r, opt;
+	int gain = AUTO_GAIN; /* tenths of a dB */
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;

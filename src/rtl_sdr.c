@@ -111,7 +111,7 @@ int main(int argc, char **argv)
 	char *filename = NULL;
 	int n_read;
 	int r, opt;
-	int i, gain = 0;
+	int gain = 0;
 	int ppm_error = 0;
 	int sync_mode = 0;
 	FILE *file;

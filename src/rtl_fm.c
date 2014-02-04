@@ -394,7 +394,7 @@ void fifth_order(int16_t *data, int length, int16_t *hist)
 void generic_fir(int16_t *data, int length, int *fir, int16_t *hist)
 /* Okay, not at all generic.  Assumes length 9, fix that eventually. */
 {
-	int d, f, temp, sum;
+	int d, temp, sum;
 	for (d=0; d<length; d+=2) {
 		temp = data[d];
 		sum = 0;
@@ -730,8 +730,7 @@ void arbitrary_resample(int16_t *buf1, int16_t *buf2, int len1, int len2)
 
 void full_demod(struct demod_state *d)
 {
-	uint8_t dump[BUFFER_DUMP];
-	int i, ds, ds_p, freq_next, n_read;
+	int i, ds_p;
 	int sr = 0;
 	ds_p = d->downsample_passes;
 	if (ds_p) {
@@ -856,7 +855,7 @@ static void optimal_settings(int freq, int rate)
 {
 	// giant ball of hacks
 	// seems unable to do a single pass, 2:1
-	int r, capture_freq, capture_rate;
+	int capture_freq, capture_rate;
 	struct dongle_state *d = &dongle;
 	struct demod_state *dm = &demod;
 	struct controller_state *cs = &controller;
@@ -883,7 +882,7 @@ static void *controller_thread_fn(void *arg)
 {
 	// thoughts for multiple dongles
 	// might be no good using a controller thread if retune/rate blocks
-	int i, r;
+	int i;
 	struct controller_state *s = arg;
 
 	if (s->wb_mode) {
@@ -1042,8 +1041,7 @@ int main(int argc, char **argv)
 #ifndef _WIN32
 	struct sigaction sigact;
 #endif
-	int n_read, r, opt;
-	int i;
+	int r, opt;
 	int dev_given = 0;
 	int custom_ppm = 0;
 	dongle_init(&dongle);

@@ -534,7 +534,7 @@ int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint1
 
 void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val)
 {
-	uint8_t r;
+	uint16_t r;
 
 	gpio = 1 << gpio;
 	r = rtlsdr_read_reg(dev, SYSB, GPO, 1);
