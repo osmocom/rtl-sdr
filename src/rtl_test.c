@@ -1,6 +1,10 @@
 /*
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
- * Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
+ * rtl_test, test and benchmark tool
+ *
+ * Copyright (C) 2012-2014 by Steve Markgraf <steve@steve-m.de>
+ * Copyright (C) 2012-2014 by Kyle Keen <keenerd@gmail.com>
+ * Copyright (C) 2014 by Michael Tatarinov <kukabu@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
