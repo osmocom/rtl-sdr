@@ -547,7 +547,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	}
 
 	if (!(data[2] & 0x40)) {
-		printf("[R82XX] PLL not locked!\n");
+		fprintf(stderr, "[R82XX] PLL not locked!\n");
 		priv->has_lock = 0;
 		return 0;
 	}
