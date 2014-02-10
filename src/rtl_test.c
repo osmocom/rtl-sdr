@@ -44,7 +44,6 @@
 #include "convenience/convenience.h"
 
 #define DEFAULT_SAMPLE_RATE		2048000
-#define DEFAULT_ASYNC_BUF_NUMBER	32
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define MINIMAL_BUF_LENGTH		512
 #define MAXIMAL_BUF_LENGTH		(256 * 16384)
@@ -406,7 +405,7 @@ int main(int argc, char **argv)
 	} else {
 		fprintf(stderr, "Reading samples in async mode...\n");
 		r = rtlsdr_read_async(dev, rtlsdr_callback, NULL,
-				      DEFAULT_ASYNC_BUF_NUMBER, out_block_size);
+				      0, out_block_size);
 	}
 
 	if (do_exit) {
