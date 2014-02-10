@@ -78,9 +78,9 @@ typedef struct { /* structure size must be multiple of 2 bytes */
 
 static rtlsdr_dev_t *dev = NULL;
 
-int global_numq = 0;
+static int global_numq = 0;
 static struct llist *ll_buffers = 0;
-int llbuf_num=500;
+static int llbuf_num = 500;
 
 static volatile int do_exit = 0;
 
