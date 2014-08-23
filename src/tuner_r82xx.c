@@ -429,12 +429,11 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	int rc, i;
 	unsigned sleep_time = 10000;
 	uint64_t vco_freq;
-	uint32_t vco_fra;	/* VCO contribution by SDM (kHz) */
-	uint32_t vco_min = 1770000;
-	uint32_t vco_max = vco_min * 2;
-	uint32_t freq_khz, pll_ref, pll_ref_khz;
-	uint16_t n_sdm = 2;
-	uint16_t sdm = 0;
+	uint64_t vco_div;
+	uint32_t vco_min = 1770000; /* kHz */
+	uint32_t vco_max = vco_min * 2; /* kHz */
+	uint32_t freq_khz, pll_ref;
+	uint32_t sdm = 0;
 	uint8_t mix_div = 2;
 	uint8_t div_buf = 0;
 	uint8_t div_num = 0;
@@ -446,7 +445,6 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	/* Frequency in kHz */
 	freq_khz = (freq + 500) / 1000;
 	pll_ref = priv->cfg->xtal;
-	pll_ref_khz = (priv->cfg->xtal + 500) / 1000;
 
 	rc = r82xx_write_reg_mask(priv, 0x10, refdiv2, 0x10);
 	if (rc < 0)
@@ -495,8 +493,24 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 		return rc;
 
 	vco_freq = (uint64_t)freq * (uint64_t)mix_div;
-	nint = vco_freq / (2 * pll_ref);
-	vco_fra = (vco_freq - 2 * pll_ref * nint) / 1000;
+
+	/* We want to approximate:
+	 *  vco_freq / (2 * pll_ref)
+	 *
+	 * in the form:
+	 *  nint + sdm/65536
+	 *
+	 * where nint,sdm are integers and 0 < nint, 0 <= sdm < 65536
+	 *
+	 * Scaling to fixed point and rounding:
+	 *
+	 *  vco_div = 65536*(nint + sdm/65536) = int( 0.5 + 65536 * vco_freq / (2 * pll_ref) )
+	 *  vco_div = 65536*nint + sdm         = int( (pll_ref + 65536 * vco_freq) / (2 * pll_ref) )
+	 */
+
+	vco_div = (pll_ref + 65536 * vco_freq) / (2 * pll_ref);
+	nint = (uint32_t) (vco_div / 65536);
+	sdm = (uint32_t) (vco_div % 65536);
 
 	if (nint > ((128 / vco_power_ref) - 1)) {
 		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
@@ -511,7 +525,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 		return rc;
 
 	/* pw_sdm */
-	if (!vco_fra)
+	if (sdm == 0)
 		val = 0x08;
 	else
 		val = 0x00;
@@ -519,17 +533,6 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	rc = r82xx_write_reg_mask(priv, 0x12, val, 0x08);
 	if (rc < 0)
 		return rc;
-
-	/* sdm calculator */
-	while (vco_fra > 1) {
-		if (vco_fra > (2 * pll_ref_khz / n_sdm)) {
-			sdm = sdm + 32768 / (n_sdm / 2);
-			vco_fra = vco_fra - 2 * pll_ref_khz / n_sdm;
-			if (n_sdm >= 0x8000)
-				break;
-		}
-		n_sdm <<= 1;
-	}
 
 	rc = r82xx_write_reg(priv, 0x16, sdm >> 8);
 	if (rc < 0)
