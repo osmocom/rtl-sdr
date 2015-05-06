@@ -64,11 +64,13 @@ static const uint8_t width2mask[] = {
  */
 static int e4k_reg_write(struct e4k_state *e4k, uint8_t reg, uint8_t val)
 {
+	int r;
 	uint8_t data[2];
 	data[0] = reg;
 	data[1] = val;
 
-	return rtlsdr_i2c_write_fn(e4k->rtl_dev, e4k->i2c_addr, data, 2);
+	r = rtlsdr_i2c_write_fn(e4k->rtl_dev, e4k->i2c_addr, data, 2);
+	return r == 2 ? 0 : -1;
 }
 
 /*! \brief Read a register of the tuner chip
