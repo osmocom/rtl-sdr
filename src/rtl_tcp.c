@@ -31,6 +31,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <netdb.h>
 #include <fcntl.h>
 #else
 #include <winsock2.h>
@@ -365,10 +366,10 @@ static void *command_worker(void *arg)
 int main(int argc, char **argv)
 {
 	int r, opt, i;
-	char* addr = "127.0.0.1";
-	int port = 1234;
+	char* port = "1234";
 	uint32_t frequency = 100000000, samp_rate = 2048000;
-	struct sockaddr_in local, remote;
+	struct addrinfo hints, *res;
+	struct sockaddr_in remote;
 	uint32_t buf_num = 0;
 	int dev_index = 0;
 	int dev_given = 0;
@@ -391,7 +392,7 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "p:f:g:s:b:n:d:P:")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -406,11 +407,8 @@ int main(int argc, char **argv)
 		case 's':
 			samp_rate = (uint32_t)atofs(optarg);
 			break;
-		case 'a':
-			addr = optarg;
-			break;
 		case 'p':
-			port = atoi(optarg);
+			port = optarg;
 			break;
 		case 'b':
 			buf_num = atoi(optarg);
@@ -502,16 +500,20 @@ int main(int argc, char **argv)
 	pthread_cond_init(&cond, NULL);
 	pthread_cond_init(&exit_cond, NULL);
 
-	memset(&local,0,sizeof(local));
-	local.sin_family = AF_INET;
-	local.sin_port = htons(port);
-	local.sin_addr.s_addr = inet_addr(addr);
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE;    /* fill in my IP for me */
+	hints.ai_protocol = IPPROTO_TCP;
+	getaddrinfo(NULL, port, &hints, &res);
 
-	listensocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	listensocket = socket(res->ai_family,
+			      res->ai_socktype, res->ai_protocol);
+
 	r = 1;
 	setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
 	setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
-	bind(listensocket,(struct sockaddr *)&local,sizeof(local));
+	bind(listensocket, res->ai_addr, res->ai_addrlen);
 
 #ifdef _WIN32
 	ioctlsocket(listensocket, FIONBIO, &blockmode);
@@ -522,11 +524,11 @@ int main(int argc, char **argv)
 
 	while(1) {
 		printf("listening...\n");
-		printf("Use the device argument 'rtl_tcp=%s:%d' in OsmoSDR "
+		printf("Use the device argument 'rtl_tcp=%s:%s' in OsmoSDR "
 		       "(gr-osmosdr) source\n"
 		       "to receive samples in GRC and control "
 		       "rtl_tcp parameters (frequency, gain, ...).\n",
-		       addr, port);
+		       "yourip", port);
 		listen(listensocket,1);
 
 		while(1) {
