@@ -1,5 +1,5 @@
 if(NOT LIBUSB_FOUND)
-  pkg_check_modules (LIBUSB_PKG libusb-1.0)
+  pkg_check_modules (LIBUSB_PKG libusb-1.0 libusb)
   find_path(LIBUSB_INCLUDE_DIR NAMES libusb.h
     PATHS
     ${LIBUSB_PKG_INCLUDE_DIRS}
@@ -12,7 +12,7 @@ if(NOT LIBUSB_FOUND)
 set(libusb1_library_names usb-1.0 libusb-1.0)
 
 #libusb-1.0 compatible library on freebsd
-if((CMAKE_SYSTEM_NAME STREQUAL "FreeBSD") OR (CMAKE_SYSTEM_NAME STREQUAL "kFreeBSD"))
+if((CMAKE_SYSTEM_NAME STREQUAL "FreeBSD") OR (CMAKE_SYSTEM_NAME STREQUAL "kFreeBSD") OR (CMAKE_SYSTEM_NAME STREQUAL "GNU"))
     list(APPEND libusb1_library_names usb)
 endif()
 
