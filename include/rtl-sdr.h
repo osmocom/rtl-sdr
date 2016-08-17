@@ -380,6 +380,15 @@ RTLSDR_API int rtlsdr_read_async(rtlsdr_dev_t *dev,
  */
 RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
 
+/*!
+ * Enable or disable the bias tee on GPIO PIN 0.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param on  1 for Bias T on. 0 for Bias T off.
+ * \return -1 if device is not initialized. 0 otherwise.
+ */
+RTLSDR_API int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1937,3 +1937,14 @@ int rtlsdr_i2c_read_fn(void *dev, uint8_t addr, uint8_t *buf, int len)
 
 	return -1;
 }
+
+int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
+{
+	if (!dev)
+		return -1;
+
+	rtlsdr_set_gpio_output(dev, 0);
+	rtlsdr_set_gpio_bit(dev, 0, on);
+
+	return 0;
+}
