@@ -24,6 +24,9 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="0bda", ATTRS{idProduct}=="2838", MODE:="066
 # DigitalNow Quad DVB-T PCI-E card (4x FC0012?)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6680", MODE:="0666"
 
+# Leadtek Research, Inc. RTL2832 [WinFast DTV Dongle Mini] (TUA9001)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6a03", MODE:="0666"
+
 # Leadtek WinFast DTV Dongle mini D (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="0413", ATTRS{idProduct}=="6f0f", MODE:="0666"
 
@@ -92,6 +95,9 @@ SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d394", MODE:="066
 
 # Peak 102569AGPK (FC0012)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d395", MODE:="0666"
+
+# Hamlet eXagerate XDVBT900BK (TUA9001)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d396", MODE:="0666"
 
 # KWorld KW-UB450-T USB DVB-T Pico TV (TUA9001)
 SUBSYSTEMS=="usb", ATTRS{idVendor}=="1b80", ATTRS{idProduct}=="d397", MODE:="0666"

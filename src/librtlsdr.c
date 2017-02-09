@@ -54,6 +54,7 @@
 #include "tuner_fc0013.h"
 #include "tuner_fc2580.h"
 #include "tuner_r82xx.h"
+#include "tuner_tua9001.h"
 
 typedef struct rtlsdr_tuner_iface {
 	/* tuner interface */
@@ -263,6 +264,15 @@ int r820t_set_gain_mode(void *dev, int manual) {
 	return r82xx_set_gain(&devt->r82xx_p, manual, 0);
 }
 
+int tua9001_set_freq(void *dev, uint32_t freq) {
+	return tua9001_set_params(dev,freq,8000000);
+}
+int tua9001_set_bw(void *dev, int bw_hz) {
+	return tua9001_set_params(dev,0,8000000);
+}
+int tua9001_set_gain(void *dev, int gain) { return 0; }
+int tua9001_set_gain_mode(void *dev, int manual) { return 0; }
+
 /* definition order must match enum rtlsdr_tuner */
 static rtlsdr_tuner_iface_t tuners[] = {
 	{
@@ -298,6 +308,11 @@ static rtlsdr_tuner_iface_t tuners[] = {
 		r820t_set_freq, r820t_set_bw, r820t_set_gain, NULL,
 		r820t_set_gain_mode
 	},
+	{
+		tua9001_init, tua9001_release,
+		tua9001_set_freq, tua9001_set_bw, tua9001_set_gain, NULL,
+		tua9001_set_gain_mode
+	}
 };
 
 typedef struct rtlsdr_dongle {
@@ -313,6 +328,7 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x0bda, 0x2832, "Generic RTL2832U" },
 	{ 0x0bda, 0x2838, "Generic RTL2832U OEM" },
 	{ 0x0413, 0x6680, "DigitalNow Quad DVB-T PCI-E card" },
+	{ 0x0413, 0x6a03, "Leadtek Research, Inc. RTL2832 [WinFast DTV Dongle Mini]"},
 	{ 0x0413, 0x6f0f, "Leadtek WinFast DTV Dongle mini D" },
 	{ 0x0458, 0x707f, "Genius TVGo DVB-T03 USB dongle (Ver. B)" },
 	{ 0x0ccd, 0x00a9, "Terratec Cinergy T Stick Black (rev 1)" },
@@ -336,6 +352,7 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x1b80, 0xd393, "GIGABYTE GT-U7300" },
 	{ 0x1b80, 0xd394, "DIKOM USB-DVBT HD" },
 	{ 0x1b80, 0xd395, "Peak 102569AGPK" },
+	{ 0x1b80, 0xd396, "Hamlet eXagerate XDVBT900BK"},
 	{ 0x1b80, 0xd397, "KWorld KW-UB450-T USB DVB-T Pico TV" },
 	{ 0x1b80, 0xd398, "Zaapa ZT-MINDVBZP" },
 	{ 0x1b80, 0xd39d, "SVEON STV20 DVB-T USB & FM" },
@@ -452,6 +469,14 @@ uint8_t rtlsdr_i2c_read_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t reg)
 	return data;
 }
 
+uint16_t rtlsdr_i2c_tunb_read_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, int8_t reg)
+{
+	uint8_t data[2] = {0,0};
+	rtlsdr_read_array(dev, TUNB, reg << 8 | i2c_addr, (uint8_t *) &data, 2);
+	
+	return data[0]<<8 | data[1];
+}
+  
 int rtlsdr_i2c_write(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t *buffer, int len)
 {
 	uint16_t addr = i2c_addr;
@@ -460,6 +485,16 @@ int rtlsdr_i2c_write(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t *buffer, int l
 		return -1;
 
 	return rtlsdr_write_array(dev, IICB, addr, buffer, len);
+}
+
+int rtlsdr_i2c_tunb_write(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t *buffer, int len)
+{
+	uint16_t addr = (buffer[0] << 8) | i2c_addr ;
+
+	if (!dev)
+		return -1;
+
+	return rtlsdr_write_array(dev, TUNB, addr, &(buffer[1]), len);
 }
 
 int rtlsdr_i2c_read(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t *buffer, int len)
@@ -1444,7 +1479,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	libusb_device *device = NULL;
 	uint32_t device_count = 0;
 	struct libusb_device_descriptor dd;
-	uint8_t reg;
+	uint16_t reg;
 	ssize_t cnt;
 
 	dev = malloc(sizeof(rtlsdr_dev_t));
@@ -1561,6 +1596,15 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	if (reg == R82XX_CHECK_VAL) {
 		fprintf(stderr, "Found Rafael Micro R828D tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R828D;
+		goto found;
+	}
+	
+	reg = rtlsdr_i2c_tunb_read_reg(dev, TUA9001_I2C_ADDR, TUA9001_CHECK_ADDR);
+	if (reg == TUA9001_CHECK_VAL) {
+		fprintf(stderr, "Found Infineon TUA9001 tuner\n");
+		//rtlsdr_set_gpio_output(dev, 1);
+		//rtlsdr_set_gpio_output(dev, 4);
+		dev->tuner_type = RTLSDR_TUNER_TUA9001;
 		goto found;
 	}
 
@@ -1936,4 +1980,16 @@ int rtlsdr_i2c_read_fn(void *dev, uint8_t addr, uint8_t *buf, int len)
 		return rtlsdr_i2c_read(((rtlsdr_dev_t *)dev), addr, buf, len);
 
 	return -1;
+}
+
+int rtlsdr_i2c_tunb_write_fn(void *dev, uint8_t addr, uint8_t *buf, int len)
+{
+	if (dev)
+		return rtlsdr_i2c_tunb_write(((rtlsdr_dev_t *)dev), addr, buf, len);
+
+	return -1;
+}
+
+void rtlsdr_set_gpio_bit_fn(rtlsdr_dev_t *dev, uint8_t gpio, int val){
+  rtlsdr_set_gpio_bit(dev, gpio, val);
 }
