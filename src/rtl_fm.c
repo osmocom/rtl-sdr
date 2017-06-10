@@ -193,6 +193,7 @@ void usage(void)
 		"\t    raw mode outputs 2x16 bit IQ pairs\n"
 		"\t[-s sample_rate (default: 24k)]\n"
 		"\t[-d device_index (default: 0)]\n"
+		"\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n"
 		"\t[-g tuner_gain (default: automatic)]\n"
 		"\t[-l squelch_level (default: 0/off)]\n"
 		//"\t    for fm squelch is inverted\n"
@@ -1042,12 +1043,13 @@ int main(int argc, char **argv)
 	int r, opt;
 	int dev_given = 0;
 	int custom_ppm = 0;
+    int enable_biastee = 0;
 	dongle_init(&dongle);
 	demod_init(&demod);
 	output_init(&output);
 	controller_init(&controller);
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:h")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:hT")) != -1) {
 		switch (opt) {
 		case 'd':
 			dongle.dev_index = verbose_device_search(optarg);
@@ -1142,6 +1144,9 @@ int main(int argc, char **argv)
 				demod.deemph = 1;
 				demod.squelch_level = 0;}
 			break;
+		case 'T':
+			enable_biastee = 1;
+			break;
 		case 'h':
 		default:
 			usage();
@@ -1204,6 +1209,10 @@ int main(int argc, char **argv)
 		dongle.gain = nearest_gain(dongle.dev, dongle.gain);
 		verbose_gain_set(dongle.dev, dongle.gain);
 	}
+
+	rtlsdr_set_bias_tee(dongle.dev, enable_biastee);
+	if (enable_biastee)
+		fprintf(stderr, "activated bias-T on GPIO PIN 0\n");
 
 	verbose_ppm_set(dongle.dev, dongle.ppm_error);
 
