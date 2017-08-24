@@ -926,8 +926,21 @@ void frequency_range(struct controller_state *s, char *arg)
 	int i;
 	start = arg;
 	stop = strchr(start, ':') + 1;
+	if (stop == (char *)1) { // no stop or step given
+		s->freqs[s->freq_len] = (uint32_t) atofs(start);
+		s->freq_len++;
+		return;
+	}
 	stop[-1] = '\0';
 	step = strchr(stop, ':') + 1;
+	if (step == (char *)1) { // no step given
+		s->freqs[s->freq_len] = (uint32_t) atofs(start);
+		s->freq_len++;
+		s->freqs[s->freq_len] = (uint32_t) atofs(stop);
+		s->freq_len++;
+		stop[-1] = ':';
+		return;
+	}
 	step[-1] = '\0';
 	for(i=(int)atofs(start); i<=(int)atofs(stop); i+=(int)atofs(step))
 	{

@@ -437,8 +437,16 @@ void frequency_range(char *arg, double crop)
 	/* hacky string parsing */
 	start = arg;
 	stop = strchr(start, ':') + 1;
+	if (stop == (char *)1) {
+		fprintf(stderr, "Bad frequency range specification: %s\n", arg);
+		exit(1);
+	}
 	stop[-1] = '\0';
 	step = strchr(stop, ':') + 1;
+	if (step == (char *)1) {
+		fprintf(stderr, "Bad frequency range specification: %s\n", arg);
+		exit(1);
+	}
 	step[-1] = '\0';
 	lower = (int)atofs(start);
 	upper = (int)atofs(stop);
