@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <fcntl.h>
 #else
@@ -371,10 +372,18 @@ static void *command_worker(void *arg)
 int main(int argc, char **argv)
 {
 	int r, opt, i;
-	char* addr = "127.0.0.1";
-	int port = 1234;
+	char *addr = "127.0.0.1";
+	char *port = "1234";
 	uint32_t frequency = 100000000, samp_rate = 2048000;
-	struct sockaddr_in local, remote;
+	struct sockaddr_storage local, remote;
+	struct addrinfo *ai;
+	struct addrinfo *aiHead;
+	struct addrinfo  hints;
+	char hostinfo[NI_MAXHOST];
+	char portinfo[NI_MAXSERV];
+	char remhostinfo[NI_MAXHOST];
+	char remportinfo[NI_MAXSERV];
+	int aiErr;
 	uint32_t buf_num = 0;
 	int dev_index = 0;
 	int dev_given = 0;
@@ -413,10 +422,10 @@ int main(int argc, char **argv)
 			samp_rate = (uint32_t)atofs(optarg);
 			break;
 		case 'a':
-			addr = optarg;
+		        addr = strdup(optarg);
 			break;
 		case 'p':
-			port = atoi(optarg);
+		        port = strdup(optarg);
 			break;
 		case 'b':
 			buf_num = atoi(optarg);
@@ -515,16 +524,42 @@ int main(int argc, char **argv)
 	pthread_cond_init(&cond, NULL);
 	pthread_cond_init(&exit_cond, NULL);
 
-	memset(&local,0,sizeof(local));
-	local.sin_family = AF_INET;
-	local.sin_port = htons(port);
-	local.sin_addr.s_addr = inet_addr(addr);
+	hints.ai_flags  = AI_PASSIVE; /* Server mode. */
+	hints.ai_family = PF_UNSPEC;  /* IPv4 or IPv6. */
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
 
-	listensocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	r = 1;
-	setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
-	setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
-	bind(listensocket,(struct sockaddr *)&local,sizeof(local));
+	if ((aiErr = getaddrinfo(addr,
+				 port,
+				 &hints,
+				 &aiHead )) != 0)
+	{
+		fprintf(stderr, "local address %s ERROR - %s.\n",
+		        addr, gai_strerror(aiErr));
+		return(-1);
+	}
+	memcpy(&local, aiHead->ai_addr, aiHead->ai_addrlen);
+
+	for (ai = aiHead; ai != NULL; ai = ai->ai_next) {
+		aiErr = getnameinfo((struct sockaddr *)ai->ai_addr, ai->ai_addrlen,
+				    hostinfo, NI_MAXHOST,
+				    portinfo, NI_MAXSERV, NI_NUMERICSERV | NI_NUMERICHOST);
+		if (aiErr)
+			fprintf( stderr, "getnameinfo ERROR - %s.\n",hostinfo);
+
+		listensocket = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+		if (listensocket < 0)
+			continue;
+
+		r = 1;
+		setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
+		setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
+
+		if (bind(listensocket, (struct sockaddr *)&local, sizeof(local)))
+			fprintf(stderr, "rtl_tcp bind error: %s", strerror(errno));
+		else
+			break;
+	}
 
 #ifdef _WIN32
 	ioctlsocket(listensocket, FIONBIO, &blockmode);
@@ -535,11 +570,11 @@ int main(int argc, char **argv)
 
 	while(1) {
 		printf("listening...\n");
-		printf("Use the device argument 'rtl_tcp=%s:%d' in OsmoSDR "
+		printf("Use the device argument 'rtl_tcp=%s:%s' in OsmoSDR "
 		       "(gr-osmosdr) source\n"
 		       "to receive samples in GRC and control "
 		       "rtl_tcp parameters (frequency, gain, ...).\n",
-		       addr, port);
+		       hostinfo, portinfo);
 		listen(listensocket,1);
 
 		while(1) {
@@ -559,7 +594,10 @@ int main(int argc, char **argv)
 
 		setsockopt(s, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
 
-		printf("client accepted!\n");
+		getnameinfo((struct sockaddr *)&remote, rlen,
+			    remhostinfo, NI_MAXHOST,
+			    remportinfo, NI_MAXSERV, NI_NUMERICSERV);
+		printf("client accepted! %s %s\n", remhostinfo, remportinfo);
 
 		memset(&dongle_info, 0, sizeof(dongle_info));
 		memcpy(&dongle_info.magic, "RTL0", 4);
