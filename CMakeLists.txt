@@ -55,6 +55,9 @@ if(CMAKE_COMPILER_IS_GNUCC AND NOT WIN32)
     ADD_DEFINITIONS(-Wdeclaration-after-statement)
     #http://gcc.gnu.org/wiki/Visibility
     add_definitions(-fvisibility=hidden)
+elseif(MSVC14 OR MSVC14)
+#pthread-w32 issue, timespec is now part of time.h
+    ADD_DEFINITIONS(-D_TIMESPEC_DEFINED)
 endif()
 
 ########################################################################
