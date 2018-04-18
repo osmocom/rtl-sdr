@@ -503,7 +503,7 @@ int polar_disc_lut(int ar, int aj, int br, int bj)
 
 	if (x_abs >= atan_lut_size) {
 		/* we can use linear range, but it is not necessary */
-		return (cj > 0) ? 1<<13 : -1<<13;
+		return (cj > 0) ? 1<<13 : -(1<<13);
 	}
 
 	if (x > 0) {
