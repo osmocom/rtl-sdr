@@ -1594,6 +1594,7 @@ found:
 	switch (dev->tuner_type) {
 	case RTLSDR_TUNER_R828D:
 		dev->tun_xtal = R828D_XTAL_FREQ;
+		/* fall-through */
 	case RTLSDR_TUNER_R820T:
 		/* disable Zero-IF mode */
 		rtlsdr_demod_write_reg(dev, 1, 0xb1, 0x1a, 1);

@@ -303,6 +303,7 @@ int main(int argc, char **argv)
 		case 'w':
 			flash_file = 1;
 			change = 1;
+			/* fall-through */
 		case 'r':
 			filename = optarg;
 			break;
