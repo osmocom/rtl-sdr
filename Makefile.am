@@ -19,7 +19,7 @@ install-udev-rules:
 uninstall-udev-rules:
 	rm -rf /etc/udev/rules.d/rtl-sdr.rules
 
-EXTRA_DIST = git-version-gen
+EXTRA_DIST = git-version-gen .version
 
 if HAVE_DOXYGEN
 
