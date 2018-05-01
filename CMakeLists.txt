@@ -65,7 +65,9 @@ endif()
 ########################################################################
 find_package(PkgConfig)
 find_package(LibUSB)
-set(THREADS_USE_PTHREADS_WIN32 true)
+if(WIN32 AND NOT MINGW)
+    set(THREADS_USE_PTHREADS_WIN32 true)
+endif()
 find_package(Threads)
 
 if(NOT LIBUSB_FOUND)
