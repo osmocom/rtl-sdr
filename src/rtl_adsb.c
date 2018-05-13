@@ -492,6 +492,8 @@ int main(int argc, char **argv)
 	else {
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 	rtlsdr_cancel_async(dev);
+	pthread_cancel(demod_thread);
+	pthread_join(demod_thread, NULL);
 	pthread_cond_destroy(&ready);
 	pthread_mutex_destroy(&ready_m);
 
