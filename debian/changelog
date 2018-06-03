@@ -1,0 +1,159 @@
+rtl-sdr (0.6git) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Harald Welte <laforge@gnumonks.org>  Sun, 06 Jun 2018 15:09:42 +0200
+
+rtl-sdr (0.5.4-1) unstable; urgency=medium
+
+  * New upstream release
+  * update to v0.5.4-3-ga854ae8
+    use USB zero-copy transfers if possible
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 12 May 2018 16:49:43 -0400
+
+rtl-sdr (0.5.3-14) unstable; urgency=medium
+
+  * update to v0.5.3-20-g4520f00 (Closes: #892974)
+  * minimal ipv6 support (Closes: #870804)
+  * VCS to salsa
+  * AppStream metadata.xml
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Mon, 16 Apr 2018 20:45:53 -0400
+
+rtl-sdr (0.5.3-13) unstable; urgency=medium
+
+  * build with libusb-1.0-0-dev stub on hurd-i386
+  * initial ipv6 support for rtl_tcp...
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Thu, 23 Nov 2017 15:59:40 -0500
+
+rtl-sdr (0.5.3-12) unstable; urgency=medium
+
+  * add new HanfTek dongle
+  * Bias T support (Closes: #854378, #842249)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Wed, 23 Aug 2017 23:31:27 -0400
+
+rtl-sdr (0.5.3-11) unstable; urgency=medium
+
+  * correct invocation of rm_conffile (Thanks Chris!) (Closes: #838161)
+  * drop uploaders line on advice of MIA team. (Closes: #836590)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 08 Oct 2016 11:17:47 -0400
+
+rtl-sdr (0.5.3-10) unstable; urgency=medium
+
+  * remove rtl-sdr-blacklist.conf on upgrade. Thanks Bob! (Closes: #829517)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 09 Jul 2016 23:38:24 -0400
+
+rtl-sdr (0.5.3-9) unstable; urgency=medium
+
+  * Edit of debian/librtlsdr0.udev in 0.5.3-8 was a no-op. Real fix
+    done to debian/patches/use-udev-uaccess-rules. (Closes: #825073)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Wed, 25 May 2016 17:19:57 -0400
+
+rtl-sdr (0.5.3-8) unstable; urgency=high
+
+  * Fix syntax errors for systemd-udevd in udev rules (Closes: #825073)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Tue, 24 May 2016 21:08:50 -0400
+
+rtl-sdr (0.5.3-7) unstable; urgency=medium
+
+  * better udev rules (more like camera devices in libgphoto2-6)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Tue, 10 May 2016 19:20:27 -0400
+
+rtl-sdr (0.5.3-6) unstable; urgency=medium
+
+  * Use ENV{ID_SOFTWARE_RADIO}=1 in udev rules (Closes: #823089)
+  * Enable DETACH_KERNEL_DRIVER (Closes: 823022)
+  * Make myself maintainer so I get the bug reports
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sun, 08 May 2016 12:12:13 -0400
+
+rtl-sdr (0.5.3-5) unstable; urgency=medium
+
+  * Add watch fiule
+  * place rtl-sdr -n comm section (Closes: #758077)
+  * improve-librtlsdr-pc-file (Closes: #784912)
+  * improve-scanning-range-parsing (LP: #1469478)
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sun, 23 Aug 2015 10:35:42 -0400
+
+rtl-sdr (0.5.3-4) unstable; urgency=low
+
+  * Update to v0.5.3-12-ge3c03f7
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 08 Aug 2015 23:43:54 -0400
+
+rtl-sdr (0.5.3-3) unstable; urgency=low
+
+  * Update to v0.5.3-5-g6ee5573
+    lib: handle events after canceling transfers
+    lib: change default number of transfers to 15
+    rtl_tcp: make all global variables static
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sun, 13 Apr 2014 10:48:49 -0400
+
+rtl-sdr (0.5.3-2) unstable; urgency=low
+
+  * Upstream: lib: only print to stderr in tuner_r82xx_set_pll()
+  * Update man pages (New -M (modulation) and -E (option) and ppm setting)
+  * Have librtlsdr0 also install a blacklist for linux video drivers
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 08 Feb 2014 22:40:06 -0500
+
+rtl-sdr (0.5.3-1) unstable; urgency=low
+
+  * New upstream git tag release
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Thu, 06 Feb 2014 20:45:38 -0500
+
+rtl-sdr (0.5.2.7.3ab6-1~bpo70+1) wheezy-backports; urgency=low
+
+  * Rebuild for wheezy-backports.
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Tue, 21 Jan 2014 19:34:16 -0500
+
+rtl-sdr (0.5.2.7.3ab6-1) unstable; urgency=low
+
+  * New upstream snapshot
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sun, 29 Dec 2013 21:37:19 -0500
+
+rtl-sdr (0.5.1.14.360d-1~wheezy) stable; urgency=low
+
+  * New upstream snapshot
+  * GNU Radio LiveDVD 2013-1110
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Mon, 11 Nov 2013 12:46:00 -0500
+
+rtl-sdr (0.5.0.4.4914-2) unstable; urgency=low
+
+  * Use kfreebsd libusb
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Fri, 01 Nov 2013 17:16:42 -0400
+
+rtl-sdr (0.5.0.4.4914-1) stable; urgency=low
+
+  * New upstream snapshot (Closes: #701018).
+  * Match GNU Radio live distribution version
+  * Sponsored upload
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 28 Sep 2013 16:55:08 -0400
+
+rtl-sdr (0.5.0+git20130715-1) unstable; urgency=low
+
+  * Initial release (Closes: #701018).
+
+ -- Adam Cécile (Le_Vert) <gandalf@le-vert.net>  Mon, 15 Jul 2013 15:51:05 +0200
+
+librtlsdr (0.0git3198f14-1) unstable; urgency=low
+
+  * New upstream git
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Mon, 14 May 2012 20:28:18 -0400

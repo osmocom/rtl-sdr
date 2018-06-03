@@ -1,0 +1,70 @@
+.TH "rtl_adsb" 1 "0.5.0" RTL-SDR "User Commands"
+.SH NAME
+rtl_adsb \- a simple ADS-B decoder
+.SH DESCRIPTION
+Uses a re-purposed DVB-T receiver as a software defined
+radio to receive and decode ADS-B data.	Written by Kyle Keen
+and incorporated in the osmocom rtl-sdr project.
+.LP
+Automatic dependent surveillance-broadcast, ADS-B, consists
+of position and other status data transmitted by aircraft
+in support of air traffic control in order to improve safety
+of flight.
+.LP
+Much software is available for the RTL2832. Most of the user-level
+packages rely on the librtlsdr library which comes as part of the
+rtl-sdr codebase. This codebase contains both the library itself and
+also a number of command line tools such as rtl_test, rtl_sdr,
+rtl_tcp, and rtl_fm. These command line tools use the library to test
+for the existence of RTL2832 devices and to perform basic data
+transfer functions to and from the device.
+.LP
+Because most of the RTL2832 devices are connected using USB, the
+librtlsdr library depends on the libusb library to communicate with
+the device.
+.SH USAGE
+With a suitable antenna for receiving the 1090 MHz signal attached
+to the rtl-sdr supported device, this program will output the
+data decoded from that signal.
+.SH SYNOPSIS
+.B  rtl_adsb [-R] [-g gain] [-p ppm] [output file]
+.SH OPTIONS
+.IP "-d device_index (default: 0)"
+.IP "-V verbove output (default: off)"
+.IP "-S show short frames (default: off)"
+.IP "-Q quality (0: no sanity checks, 0.5: half bit, 1: one bit (default), 2: two bits)"
+.IP "-e allowed_errors (default: 5)"
+.IP "-g tuner_gain (default: automatic)"
+.IP "-p ppm_error (default: 0)"
+.IP tfilename
+ (a '-' dumps samples to stdout)
+ (omitting the filename also uses stdout)
+.SH EXAMPLES
+.IP "Streaming with netcat:"
+  rtl_adsb | netcat -lp 8080
+
+  while true; do rtl_adsb | nc -lp 8080; done
+.IP "Streaming with socat:"
+  rtl_adsb | socat -u - TCP4:sdrsharp.com:47806
+.SH SEE ALSO
+RTL-SDR wiki documentation:
+.B http://sdr.osmocom.org/trac/wiki/rtl-sdr
+.LP
+Other rtl-sdr programs:
+.sp
+rtl_eeprom(1), rtl_fm(1), rtl_sdr(1), rtl_tcp(1), rtl_test(1)
+.SH AUTHOR
+This manual page was written by Maitland Bottoms
+for the Debian project (but may be used by others).
+.SH COPYRIGHT
+Copyright (c) 2013 A. Maitland Bottoms <bottoms@debian.org>
+.LP
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version.
+.LP
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.

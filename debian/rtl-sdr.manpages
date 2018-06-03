@@ -1,0 +1,7 @@
+debian/rtl_adsb.1
+debian/rtl_eeprom.1
+debian/rtl_fm.1
+debian/rtl_power.1
+debian/rtl_sdr.1
+debian/rtl_tcp.1
+debian/rtl_test.1

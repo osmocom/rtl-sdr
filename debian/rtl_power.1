@@ -1,0 +1,176 @@
+.TH rtl_power: "1" "0.5.1" RTL_SDR "User Commands"
+.SH NAME
+rtl_power: \- wideband spectrum monitor utility
+.SH DESCRIPTION
+Uses a re-purposed DVB-T receiver as a software defined
+radio to receive signals in I/Q data form. Written for
+and incorporated in the osmocom rtl-sdr project.
+.SH USAGE
+rtl_power, a simple FFT logger for RTL2832 based DVB\-T receivers
+.PP
+This tool gathers signal data over a very wide area of the frequency spectrum,
+and then that data can be used to find active areas of the spectrum.
+.PP
+Use:    rtl_power \fB\-f\fR freq_range [\-options] [filename]
+.HP
+\fB\-f\fR lower:upper:bin_size [Hz]
+.IP
+(bin size is a maximum, smaller more convenient bins
+.TP
+will be used.
+valid range 1Hz \- 2.8MHz)
+.IP
+[\-i integration_interval (default: 10 seconds)]
+.IP
+(buggy if a full sweep takes longer than the interval)
+.IP
+[\-1 enables single\-shot mode (default: off)]
+[\-e exit_timer (default: off/0)]
+[\-d device_index (default: 0)]
+[\-g tuner_gain (default: automatic)]
+[\-p ppm_error (default: 0)]
+filename (a '\-' dumps samples to stdout)
+.IP
+(omitting the filename also uses stdout)
+.SS "Experimental options:"
+.IP
+[\-w window (default: rectangle)]
+.IP
+(hamming, blackman, blackman\-harris, hann\-poisson, bartlett, youssef)
+.IP
+[\-c crop_percent (default: 0%, recommended: 20%\-50%)]
+.IP
+(discards data at the edges, 100% discards everything)
+(has no effect for bins larger than 1MHz)
+.IP
+[\-F fir_size (default: disabled)]
+.IP
+(enables low\-leakage downsample filter,
+.TP
+fir_size can be 0 or 9.
+0 has bad roll off,
+.IP
+try with '\-c 50%')
+.IP
+[\-P enables peak hold (default: off)]
+[\-D enable direct sampling (default: off)]
+[\-O enable offset tuning (default: off)]
+.SS "CSV FFT output columns:"
+.IP
+date, time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...
+.SH EXAMPLES
+.IP
+rtl_power \fB\-f\fR 88M:108M:125k fm_stations.csv
+.IP
+(creates 160 bins across the FM band,
+.IP
+individual stations should be visible)
+.IP
+rtl_power \fB\-f\fR 100M:1G:1M \fB\-i\fR 5m \fB\-1\fR survey.csv
+.IP
+(a five minute low res scan of nearly everything)
+.IP
+rtl_power \fB\-f\fR ... \fB\-i\fR 15m \fB\-1\fR log.csv
+.IP
+(integrate for 15 minutes and exit afterwards)
+.IP
+rtl_power \fB\-f\fR ... \fB\-e\fR 1h | gzip > log.csv.gz
+.IP
+(collect data for one hour and compress it on the fly)
+.SS "Convert CSV to a waterfall graphic with:"
+.IP
+http://kmkeen.com/tmp/heatmap.py.txt
+.PP
+rtl_power, a simple FFT logger for RTL2832 based DVB\-T receivers
+.PP
+Use:    rtl_power \fB\-f\fR freq_range [\-options] [filename]
+.HP
+\fB\-f\fR lower:upper:bin_size [Hz]
+.IP
+(bin size is a maximum, smaller more convenient bins
+.TP
+will be used.
+valid range 1Hz \- 2.8MHz)
+.IP
+[\-i integration_interval (default: 10 seconds)]
+.IP
+(buggy if a full sweep takes longer than the interval)
+.IP
+[\-1 enables single\-shot mode (default: off)]
+[\-e exit_timer (default: off/0)]
+[\-d device_index (default: 0)]
+[\-g tuner_gain (default: automatic)]
+[\-p ppm_error (default: 0)]
+filename (a '\-' dumps samples to stdout)
+.IP
+(omitting the filename also uses stdout)
+.SS "Experimental options:"
+.IP
+[\-w window (default: rectangle)]
+.IP
+(hamming, blackman, blackman\-harris, hann\-poisson, bartlett, youssef)
+.IP
+[\-c crop_percent (default: 0%, recommended: 20%\-50%)]
+.IP
+(discards data at the edges, 100% discards everything)
+(has no effect for bins larger than 1MHz)
+.IP
+[\-F fir_size (default: disabled)]
+.IP
+(enables low\-leakage downsample filter,
+.TP
+fir_size can be 0 or 9.
+0 has bad roll off,
+.IP
+try with '\-c 50%')
+.IP
+[\-P enables peak hold (default: off)]
+[\-D enable direct sampling (default: off)]
+[\-O enable offset tuning (default: off)]
+.SS "CSV FFT output columns:"
+.IP
+date, time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...
+.IP
+rtl_power \fB\-f\fR 88M:108M:125k fm_stations.csv
+.IP
+(creates 160 bins across the FM band,
+.IP
+individual stations should be visible)
+.IP
+rtl_power \fB\-f\fR 100M:1G:1M \fB\-i\fR 5m \fB\-1\fR survey.csv
+.IP
+(a five minute low res scan of nearly everything)
+.IP
+rtl_power \fB\-f\fR ... \fB\-i\fR 15m \fB\-1\fR log.csv
+.IP
+(integrate for 15 minutes and exit afterwards)
+.IP
+rtl_power \fB\-f\fR ... \fB\-e\fR 1h | gzip > log.csv.gz
+.IP
+(collect data for one hour and compress it on the fly)
+.SS "Convert CSV to a waterfall graphic with:"
+.IP
+http://kmkeen.com/tmp/heatmap.py.txt
+.SH "SEE ALSO"
+.LP
+RTL-SDR wiki documentation:
+.B http://sdr.osmocom.org/trac/wiki/rtl-sdr
+.LP
+Other rtl-sdr programs:
+.sp
+rtl_adsb(1), rtl_eeprom(1), rtl_fm(1), rtl_sdr(1), rtl_tcp(1), rtl_test(1)
+.SH AUTHOR
+This manual page was written by Maitland Bottoms
+for the Debian project (but may be used by others).
+.SH COPYRIGHT
+Copyright (c) 2013 A. Maitland Bottoms <bottoms@debian.org>
+.LP
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version.
+.LP
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.

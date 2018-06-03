@@ -1,0 +1,230 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: rtl-sdr
+Upstream-Contact: http://sdr.osmocom.org/trac/wiki/rtl-sdr
+Source:
+ git clone git://git.osmocom.org/rtl-sdr.git
+ The upstream package source tarball was generated from the tag:
+ git archive --format=tar --prefix=rtl-sdr-0.5.2.7.3ab6/ 3ab6ff | gzip > ../rtl-sdr_0.5.2.7.3ab6.orig.tar.gz
+Comment:
+ Debian packages sponsored by A. Maitland Bottoms,
+ based upon packaging work by Adam Cécile.
+ .
+ Upstream Authors:
+ Steve Markgraf <steve@steve-m.de>
+ Dimitri Stolnikov <horiz0n@gmx.net>
+ Hoernchen <la@tfc-server.de>
+ Kyle Keen <keenerd@gmail.com>
+Copyright: 2012,2013 OSMOCOM Project
+License: GPL-2.0+
+
+Files: *
+Copyright: 2012, 2013, OSMOCOM Project
+License: GPL-3+
+
+Files: debian/*
+Copyright: 2013 Adam Cécile (Le_Vert) <gandalf@le-vert.net>
+           2012,2013 A. Maitland Bottoms <bottoms@debian.org>
+License: GPL-2.0+
+
+Files: debian/librtlsdr0.udev
+Copyright: 2012, 2013, Osmocom rtl-sdr project
+License: GPL-3+
+
+Files: debian/rtl_adsb.1
+Copyright: Copyright (c) 2013, A. Maitland Bottoms <bottoms@debian.org>
+License: GPL-2.0+
+
+Files: debian/rtl_eeprom.1
+  debian/rtl_test.1
+Copyright: Copyright (c) 2013, A. Maitland Bottoms <bottoms@debian.org>
+License: GPL-2+
+
+Files: git-version-gen
+Copyright: 2007-2010, Free Software Foundation, Inc.
+License: GPL-3+
+
+Files: include/*
+Copyright: 2012, Steve Markgraf <steve@steve-m.de>
+  2012, Hans-Frieder Vogt <hfvogt@gmx.net>
+License: GPL-2+
+
+Files: include/CMakeLists.txt
+Copyright: 2012, 2013, OSMOCOM Project
+License: GPL-3+
+
+Files: include/rtl-sdr.h
+Copyright: 2012, Dimitri Stolnikov <horiz0n@gmx.net>
+  2012, 2013, Steve Markgraf <steve@steve-m.de>
+License: GPL-2+
+
+Files: include/rtl-sdr_export.h
+Copyright: 2012, Hoernchen <la@tfc-server.de>
+License: GPL-2+
+
+Files: include/tuner_e4k.h
+Copyright: 2012, Sylvain Munaut <tnt@246tNt.com>
+  2012, Hoernchen <la@tfc-server.de>
+  2011, 2012, Harald Welte <laforge@gnumonks.org>
+License: GPL-2+
+
+Files: include/tuner_fc2580.h
+Copyright: Steve Markgraf <steve@steve-m.de>
+License: GPL-2.0+
+
+Files: include/tuner_r82xx.h
+Copyright: 2013, Steve Markgraf <steve@steve-m.de>
+  2013, Mauro Carvalho Chehab <mchehab@redhat.com>
+License: GPL-2+
+
+Files: rtl-sdr.rules
+Copyright: 2012, 2013, Osmocom rtl-sdr project
+License: GPL-3+
+
+Files: src/*
+Copyright: 2012, Steve Markgraf <steve@steve-m.de>
+License: GPL-2+
+
+Files: src/CMakeLists.txt
+Copyright: 2012, 2013, OSMOCOM Project
+License: GPL-3+
+
+Files: src/Makefile.am
+Copyright: 2012 Steve Markgraf <steve@steve-m.de>
+           2012 Dimitri Stolnikov <horiz0n@gmx.net>
+License: GPL-2.0+
+
+Files: src/convenience/*
+Copyright: 2014, Kyle Keen <keenerd@gmail.com>
+License: GPL-2+
+
+Files: src/getopt/*
+Copyright: 88-96, 98, 99, 1987, 2000, 2001
+License: LGPL-2.1+
+
+Files: src/getopt/getopt.h
+Copyright: 1989-1994, 1996-1999, 2001, Free Software Foundation, Inc.
+License: LGPL-2.1+
+
+Files: src/librtlsdr.c
+Copyright: 2012-2014, Steve Markgraf <steve@steve-m.de>
+  2012, Dimitri Stolnikov <horiz0n@gmx.net>
+License: GPL-2+
+
+Files: src/rtl_adsb.c
+Copyright: 2012, Youssef Touil <youssef@sdrsharp.com>
+  2012, Steve Markgraf <steve@steve-m.de>
+  2012, Kyle Keen <keenerd@gmail.com>
+  2012, Ian Gilmour <ian@sdrsharp.com>
+  2012, Hoernchen <la@tfc-server.de>
+License: GPL-2+
+
+Files: src/rtl_fm.c
+Copyright: 2013, Elias Oenal <EliasOenal@gmail.com>
+  2012, Steve Markgraf <steve@steve-m.de>
+  2012, Kyle Keen <keenerd@gmail.com>
+  2012, Hoernchen <la@tfc-server.de>
+License: GPL-2+
+
+Files: src/rtl_power.c
+Copyright: 2012, Steve Markgraf <steve@steve-m.de>
+  2012, Kyle Keen <keenerd@gmail.com>
+  2012, Hoernchen <la@tfc-server.de>
+License: GPL-2+
+
+Files: src/rtl_tcp.c
+Copyright: 2012, Steve Markgraf <steve@steve-m.de>
+  2012, 2013, Hoernchen <la@tfc-server.de>
+License: GPL-2+
+
+Files: src/rtl_test.c
+Copyright: 2014, Michael Tatarinov <kukabu@gmail.com>
+  2012-2014, Steve Markgraf <steve@steve-m.de>
+  2012-2014, Kyle Keen <keenerd@gmail.com>
+License: GPL-2+
+
+Files: src/tuner_e4k.c
+Copyright: 2012, Sylvain Munaut <tnt@246tNt.com>
+  2012, Hoernchen <la@tfc-server.de>
+  2011, 2012, Harald Welte <laforge@gnumonks.org>
+License: GPL-2+
+
+Files: src/tuner_fc0012.c
+Copyright: 2012, Steve Markgraf <steve@steve-m.de>
+  2012, Hans-Frieder Vogt <hfvogt@gmx.net>
+License: GPL-2+
+
+Files: src/tuner_fc0013.c
+Copyright: 2012, Steve Markgraf <steve@steve-m.de>
+  2012, Hans-Frieder Vogt <hfvogt@gmx.net>
+  2010, Fitipower Integrated Technology Inc
+License: GPL-2+
+
+Files: src/tuner_fc2580.c
+Copyright: Steve Markgraf <steve@steve-m.de>
+    Dimitri Stolnikov <horiz0n@gmx.net>
+License: GPL-2.0+
+
+Files: src/tuner_r82xx.c
+Copyright: 2013, Steve Markgraf <steve@steve-m.de>
+  2013, Mauro Carvalho Chehab <mchehab@redhat.com>
+License: GPL-2+
+
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; version 2 dated June, 1991, or (at
+ your option) any later version.
+ .
+ On Debian systems, the complete text of version 2 of the GNU General
+ Public License can be found in '/usr/share/common-licenses/GPL-2'.
+
+License: GPL-2.0+
+ This package is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License can be found in "/usr/share/common-licenses/GPL-3".
+
+License: LGPL-2.1+
+ This package is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License can be found in "/usr/share/common-licenses/LGPL-2".

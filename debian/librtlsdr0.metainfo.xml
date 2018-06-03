@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <id>librtlsdr0</id>
+  <metadata_license>GPL-2+</metadata_license>
+  <name>librtlsdr0</name>
+  <summary>Control of rtl-sdr radio receiver</summary>
+  <description>
+    <p>
+rtl-sdr is a software defined radio (SDR) receiver software for certain
+low-cost DVB-T/DAB(+) USB dongles based on the Realtek RTL2832U chip.
+    </p>
+  </description>
+  <provides>
+    <modalias>usb:v0BDAp2832d*</modalias>
+    <modalias>usb:v0BDAp2838d*</modalias>
+    <modalias>usb:v0413p6680d*</modalias>
+    <modalias>usb:v0413p6F0Fd*</modalias>
+    <modalias>usb:v0458p707Fd*</modalias>
+    <modalias>usb:v0CCDp00A9d*</modalias>
+    <modalias>usb:v0CCDp00B3d*</modalias>
+    <modalias>usb:v0CCDp00B4d*</modalias>
+    <modalias>usb:v0CCDp00B5d*</modalias>
+    <modalias>usb:v0CCDp00B7d*</modalias>
+    <modalias>usb:v0CCDp00B8d*</modalias>
+    <modalias>usb:v0CCDp00B9d*</modalias>
+    <modalias>usb:v0CCDp00C0d*</modalias>
+    <modalias>usb:v0CCDp00C6d*</modalias>
+    <modalias>usb:v0CCDp00D3d*</modalias>
+    <modalias>usb:v0CCDp00D7d*</modalias>
+    <modalias>usb:v0CCDp00E0d*</modalias>
+    <modalias>usb:v1554p5020d*</modalias>
+    <modalias>usb:v15F4p0131d*</modalias>
+    <modalias>usb:v15F4p0133d*</modalias>
+    <modalias>usb:v185Bp0620d*</modalias>
+    <modalias>usb:v185Bp0650d*</modalias>
+    <modalias>usb:v185Bp0680d*</modalias>
+    <modalias>usb:v1B80pD393d*</modalias>
+    <modalias>usb:v1B80pD394d*</modalias>
+    <modalias>usb:v1B80pD395d*</modalias>
+    <modalias>usb:v1B80pD397d*</modalias>
+    <modalias>usb:v1B80pD398d*</modalias>
+    <modalias>usb:v1B80pD39Dd*</modalias>
+    <modalias>usb:v1B80pD3A4d*</modalias>
+    <modalias>usb:v1B80pD3A8d*</modalias>
+    <modalias>usb:v1B80pD3AFd*</modalias>
+    <modalias>usb:v1B80pD3B0d*</modalias>
+    <modalias>usb:v1D19p1101d*</modalias>
+    <modalias>usb:v1D19p1102d*</modalias>
+    <modalias>usb:v1D19p1103d*</modalias>
+    <modalias>usb:v1D19p1104d*</modalias>
+    <modalias>usb:v1F4DpA803d*</modalias>
+    <modalias>usb:v1F4DpB803d*</modalias>
+    <modalias>usb:v1F4DpC803d*</modalias>
+    <modalias>usb:v1F4DpD286d*</modalias>
+    <modalias>usb:v1F4DpD803d*</modalias>
+  </provides>
+</component>

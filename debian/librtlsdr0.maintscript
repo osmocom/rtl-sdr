@@ -1,0 +1,1 @@
+rm_conffile /etc/modprobe.d/rtl-sdr-blacklist.conf 0.5.3-10~
