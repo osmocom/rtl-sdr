@@ -40,7 +40,7 @@ install-data-hook:
 	cd $(DESTDIR)$(doc_htmldir) && tar xf html.tar --strip-components 1 && rm -f html.tar
 
 uninstall-hook:
-	cd $(DESTDIR) && rm -rf $(doc_htmldir)
+	rm -rf $(DESTDIR)/$(doc_htmldir)
 
 DX_CLEAN = doc/{html,latex}/* doc/html.tar
 
