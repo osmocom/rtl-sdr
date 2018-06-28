@@ -250,7 +250,7 @@ void sine_table(int size)
 	}
 }
 
-inline int16_t FIX_MPY(int16_t a, int16_t b)
+static inline int16_t FIX_MPY(int16_t a, int16_t b)
 /* fixed point multiply and scale */
 {
 	int c = ((int)a * (int)b) >> 14;
