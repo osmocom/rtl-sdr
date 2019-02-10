@@ -580,6 +580,10 @@ int main(int argc, char **argv)
 		closesocket(s);
 
 		printf("all threads dead..\n");
+		
+		// Clear stale data for next client
+		ringbuf_head = ringbuf_tail = 0;
+		memset(ringbuf, 0, ringbuf_sz);
 
 		do_exit = 0;
 	}
