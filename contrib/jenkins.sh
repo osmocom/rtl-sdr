@@ -36,5 +36,6 @@ LD_LIBRARY_PATH="$inst/lib" \
   DISTCHECK_CONFIGURE_FLAGS="--enable-werror" \
   $MAKE distcheck \
   || cat-testlogs.sh
+$MAKE maintainer-clean
 
 osmo-clean-workspace.sh
