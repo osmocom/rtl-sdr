@@ -126,6 +126,14 @@ else (DETACH_KERNEL_DRIVER)
     message (STATUS "Building with kernel driver detaching disabled, use -DDETACH_KERNEL_DRIVER=ON to enable")
 endif (DETACH_KERNEL_DRIVER)
 
+option(ENABLE_ZEROCOPY "Enable usbfs zero-copy support" OFF)
+if (ENABLE_ZEROCOPY)
+    message (STATUS "Building with usbfs zero-copy support enabled")
+    add_definitions(-DENABLE_ZEROCOPY=1)
+else (ENABLE_ZEROCOPY)
+    message (STATUS "Building with usbfs zero-copy support disabled, use -DENABLE_ZEROCOPY=ON to enable")
+endif (ENABLE_ZEROCOPY)
+
 ########################################################################
 # Add subdirectories
 ########################################################################

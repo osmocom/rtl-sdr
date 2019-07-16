@@ -101,6 +101,12 @@ AC_ARG_ENABLE(driver-detach,
     CFLAGS="$CFLAGS -DDETACH_KERNEL_DRIVER"
 fi])
 
+AC_ARG_ENABLE(zerocopy,
+[  --enable-zerocopy          Enable usbfs zero-copy support (disabled by default)],
+[if test x$enableval = xyes; then
+    CFLAGS="$CFLAGS -DENABLE_ZEROCOPY"
+fi])
+
 dnl Generate the output
 AC_CONFIG_HEADER(config.h)
 

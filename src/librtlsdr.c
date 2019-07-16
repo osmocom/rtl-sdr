@@ -1751,7 +1751,7 @@ static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 	dev->xfer_buf = malloc(dev->xfer_buf_num * sizeof(unsigned char *));
 	memset(dev->xfer_buf, 0, dev->xfer_buf_num * sizeof(unsigned char *));
 
-#if defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
+#if defined(ENABLE_ZEROCOPY) && defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
 	fprintf(stderr, "Allocating %d zero-copy buffers\n", dev->xfer_buf_num);
 
 	dev->use_zerocopy = 1;
