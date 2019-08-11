@@ -419,7 +419,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	int rc, i;
 	unsigned sleep_time = 10000;
 	uint64_t vco_freq;
-	uint32_t vco_fra;	/* VCO contribution by SDM (kHz) */
+	uint64_t vco_fra;	/* VCO contribution by SDM (kHz) */
 	uint32_t vco_min = 1770000;
 	uint32_t vco_max = vco_min * 2;
 	uint32_t freq_khz, pll_ref, pll_ref_khz;

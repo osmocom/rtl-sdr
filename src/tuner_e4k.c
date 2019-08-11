@@ -40,7 +40,7 @@
 #define MHZ(x)	((x)*1000*1000)
 #define KHZ(x)	((x)*1000)
 
-uint32_t unsigned_delta(uint32_t a, uint32_t b)
+uint64_t unsigned_delta(uint64_t a, uint32_t b)
 {
 	if (a > b)
 		return a - b;
@@ -164,15 +164,15 @@ static const uint32_t rf_filt_center_l[] = {
 	MHZ(1680), MHZ(1700), MHZ(1720), MHZ(1750)
 };
 
-static int closest_arr_idx(const uint32_t *arr, unsigned int arr_size, uint32_t freq)
+static int closest_arr_idx(const uint32_t *arr, unsigned int arr_size, uint64_t freq)
 {
 	unsigned int i, bi = 0;
-	uint32_t best_delta = 0xffffffff;
+	uint64_t best_delta = 0xffffffff;
 
 	/* iterate over the array containing a list of the center
 	 * frequencies, selecting the closest one */
 	for (i = 0; i < arr_size; i++) {
-		uint32_t delta = unsigned_delta(freq, arr[i]);
+		uint64_t delta = unsigned_delta(freq, arr[i]);
 		if (delta < best_delta) {
 			best_delta = delta;
 			bi = i;
@@ -183,7 +183,7 @@ static int closest_arr_idx(const uint32_t *arr, unsigned int arr_size, uint32_t 
 }
 
 /* return 4-bit index as to which RF filter to select */
-static int choose_rf_filter(enum e4k_band band, uint32_t freq)
+static int choose_rf_filter(enum e4k_band band, uint64_t freq)
 {
 	int rc;
 
@@ -383,7 +383,7 @@ static int is_fvco_valid(uint32_t fvco_z)
 	return 1;
 }
 
-static int is_fosc_valid(uint32_t fosc)
+static int is_fosc_valid(uint64_t fosc)
 {
 	if (fosc < MHZ(16) || fosc > MHZ(30)) {
 		fprintf(stderr, "[E4K] Fosc %u invalid\n", fosc);
@@ -415,7 +415,7 @@ static int use_3ph_mixing(uint32_t flo)
 
 /* \brief compute Fvco based on Fosc, Z and X
  * \returns positive value (Fvco in Hz), 0 in case of error */
-static uint64_t compute_fvco(uint32_t f_osc, uint8_t z, uint16_t x)
+static uint64_t compute_fvco(uint64_t f_osc, uint8_t z, uint16_t x)
 {
 	uint64_t fvco_z, fvco_x, fvco;
 
@@ -439,7 +439,7 @@ static uint64_t compute_fvco(uint32_t f_osc, uint8_t z, uint16_t x)
 	return fvco;
 }
 
-static uint32_t compute_flo(uint32_t f_osc, uint8_t z, uint16_t x, uint8_t r)
+static uint64_t compute_flo(uint64_t f_osc, uint8_t z, uint16_t x, uint8_t r)
 {
 	uint64_t fvco = compute_fvco(f_osc, z, x);
 	if (fvco == 0)
@@ -480,14 +480,14 @@ static int e4k_band_set(struct e4k_state *e4k, enum e4k_band band)
  *  \returns actual PLL frequency, as close as possible to intended_flo,
  *	     0 in case of error
  */
-uint32_t e4k_compute_pll_params(struct e4k_pll_params *oscp, uint32_t fosc, uint32_t intended_flo)
+uint64_t e4k_compute_pll_params(struct e4k_pll_params *oscp, uint64_t fosc, uint32_t intended_flo)
 {
 	uint32_t i;
 	uint8_t r = 2;
 	uint64_t intended_fvco, remainder;
 	uint64_t z = 0;
-	uint32_t x;
-	int flo;
+	uint64_t x;
+    uint64_t flo;
 	int three_phase_mixing = 0;
 	oscp->r_idx = 0;
 
@@ -532,7 +532,7 @@ uint32_t e4k_compute_pll_params(struct e4k_pll_params *oscp, uint32_t fosc, uint
 	return flo;
 }
 
-int e4k_tune_params(struct e4k_state *e4k, struct e4k_pll_params *p)
+uint64_t e4k_tune_params(struct e4k_state *e4k, struct e4k_pll_params *p)
 {
 	/* program R + 3phase/2phase */
 	e4k_reg_write(e4k, E4K_REG_SYNTH7, p->r_idx);
@@ -573,7 +573,7 @@ int e4k_tune_params(struct e4k_state *e4k, struct e4k_pll_params *p)
  */
 int e4k_tune_freq(struct e4k_state *e4k, uint32_t freq)
 {
-	uint32_t rc;
+	uint64_t rc;
 	struct e4k_pll_params p;
 
 	/* determine PLL parameters */
