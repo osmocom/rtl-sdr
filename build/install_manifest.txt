@@ -1,0 +1,15 @@
+/etc/udev/rules.d/rtl-sdr.rules
+/usr/local/lib/pkgconfig/librtlsdr.pc
+/usr/local/include/rtl-sdr.h
+/usr/local/include/rtl-sdr_export.h
+/usr/local/lib/librtlsdr.so.0.6git
+/usr/local/lib/librtlsdr.so.0
+/usr/local/lib/librtlsdr.so
+/usr/local/lib/librtlsdr.a
+/usr/local/bin/rtl_sdr
+/usr/local/bin/rtl_tcp
+/usr/local/bin/rtl_test
+/usr/local/bin/rtl_fm
+/usr/local/bin/rtl_eeprom
+/usr/local/bin/rtl_adsb
+/usr/local/bin/rtl_power

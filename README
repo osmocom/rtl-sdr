@@ -4,3 +4,9 @@ turns your Realtek RTL2832 based DVB dongle into a SDR receiver
 
 For more information see:
 https://osmocom.org/projects/rtl-sdr/wiki
+
+Modified RTL-SDR Blog Version
+
+1) VCO PLL current fix - Improves stability at frequencies above ~1.5 GHz https://www.rtl-sdr.com/beta-testing-a-modified-rtl-sdr-driver-for-l-band-heat-issues/
+2) RTL_TCP ring buffer enhancement by Stephen Blinick https://www.rtl-sdr.com/significantly-improving-rtl_tcps-performance-with-ring-buffers/
+3) Enabled direct sampling for rtl_tcp
