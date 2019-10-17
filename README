@@ -10,3 +10,5 @@ Modified RTL-SDR Blog Version
 1) VCO PLL current fix - Improves stability at frequencies above ~1.5 GHz https://www.rtl-sdr.com/beta-testing-a-modified-rtl-sdr-driver-for-l-band-heat-issues/
 2) RTL_TCP ring buffer enhancement by Stephen Blinick https://www.rtl-sdr.com/significantly-improving-rtl_tcps-performance-with-ring-buffers/
 3) Enabled direct sampling for rtl_tcp
+4) rtl_biast program added, including the ability to turn on/off any GPIO
+5) Hack to force the bias tee to always be on by setting the unused IR endpoint bit to 0 in the EEPROM with "rtl_eeprom -i 0"

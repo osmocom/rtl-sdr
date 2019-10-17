@@ -389,6 +389,16 @@ RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
  */
 RTLSDR_API int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on);
 
+/*!
+ * Enable or disable any GPIO.
+ * \param dev the device handle given by rtlsdr_open()
+ * \param gpio_pin GPIO pin number for ON
+ * \param on 1 for GPIO on. 0 for GPIO off.
+ */
+RTLSDR_API int rtlsdr_set_gpio(rtlsdr_dev_t *dev, int gpio_pin, int on);
+
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -13,3 +13,4 @@
 /usr/local/bin/rtl_eeprom
 /usr/local/bin/rtl_adsb
 /usr/local/bin/rtl_power
+/usr/local/bin/rtl_biast
