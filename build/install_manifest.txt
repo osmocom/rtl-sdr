@@ -1,4 +1,3 @@
-/etc/udev/rules.d/rtl-sdr.rules
 /usr/local/lib/pkgconfig/librtlsdr.pc
 /usr/local/include/rtl-sdr.h
 /usr/local/include/rtl-sdr_export.h

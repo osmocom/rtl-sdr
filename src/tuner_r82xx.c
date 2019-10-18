@@ -448,9 +448,14 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 		return rc;
 
 	/* set VCO current = 100 RTL-SDRBLOG MOD: MAX CURRENT*/
-	rc = r82xx_write_reg_mask(priv, 0x12, 0x00, 0xe0);
+	rc = r82xx_write_reg_mask(priv, 0x12, 0x06, 0xff);
 	if (rc < 0)
 		return rc;
+
+	// Test turning tracking filter off
+	//rc = r82xx_write_reg_mask(priv, 0x1a, 0x40, 0xC0);
+
+
 
 	/* Calculate divider */
 	while (mix_div <= 64) {
@@ -540,7 +545,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 
 		if (!i) {
 			/* Didn't lock. Increase VCO current */
-			rc = r82xx_write_reg_mask(priv, 0x12, 0x00, 0xe0);
+			rc = r82xx_write_reg_mask(priv, 0x12, 0x06, 0xff);
 			if (rc < 0)
 				return rc;
 		}
@@ -663,6 +668,9 @@ static int r82xx_sysfreq_sel(struct r82xx_priv *priv, uint32_t freq,
 	rc = r82xx_write_reg_mask(priv, 0x11, cp_cur, 0x38);
 	if (rc < 0)
 		return rc;
+	
+	// RTLSDRBLOG. Improve L-band performance by setting PLL drop out to 2.0v
+        div_buf_cur = 0xa0;
 	rc = r82xx_write_reg_mask(priv, 0x17, div_buf_cur, 0x30);
 	if (rc < 0)
 		return rc;
@@ -968,7 +976,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 			return rc;
 
 		/* set fixed VGA gain for now (16.3 dB) */
-		rc = r82xx_write_reg_mask(priv, 0x0c, 0x08, 0x9f);
+		rc = r82xx_write_reg_mask(priv, 0x0c, 0x08, 0x9f); //init val 0x08 0x0c works well at 1.7
 		if (rc < 0)
 			return rc;
 
