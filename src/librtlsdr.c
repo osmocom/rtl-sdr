@@ -2026,7 +2026,7 @@ int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
 	if (!dev)
 		return -1;
 
-	if(dev->force_bt) return 1; // If force_bt is on from the EEPROM, do not allow bias tee to turn off
+	if(dev->force_bt) on = 1; // If force_bt is on from the EEPROM, do not allow bias tee to turn off
 
 	rtlsdr_set_gpio_output(dev, 0);
 	rtlsdr_set_gpio_bit(dev, 0, on);
@@ -2039,7 +2039,7 @@ int rtlsdr_set_gpio(rtlsdr_dev_t *dev, int gpio_pin, int on)
 	if (!dev)
 		return -1;
 
-	if(dev->force_bt) return 1; // If force_bt is on from the EEPROM, do not allow bias tee to turn off
+	if(dev->force_bt) on = 1; // If force_bt is on from the EEPROM, do not allow bias tee to turn off
 
 	rtlsdr_set_gpio_output(dev, gpio_pin);
 	rtlsdr_set_gpio_bit(dev, gpio_pin, on);
