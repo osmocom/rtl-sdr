@@ -754,6 +754,12 @@ void csv_dbm(struct tuning_state *ts)
 	ts->samples = 0;
 }
 
+time_t time_ms() {
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	return now.tv_sec * 1000 + now.tv_usec / 1000;
+}
+
 int main(int argc, char **argv)
 {
 #ifndef _WIN32
@@ -775,7 +781,8 @@ int main(int argc, char **argv)
 	int enable_biastee = 0;
 	double crop = 0.0;
 	char *freq_optarg;
-	time_t next_tick;
+	time_t next_tick_ms;
+	time_t time_now_ms;
 	time_t time_now;
 	time_t exit_time = 0;
 	char t_str[50];
