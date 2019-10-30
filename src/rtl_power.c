@@ -961,9 +961,10 @@ int main(int argc, char **argv)
 	/* actually do stuff */
 	rtlsdr_set_sample_rate(dev, (uint32_t)tunes[0].rate);
 	sine_table(tunes[0].bin_e);
-	next_tick = time(NULL) + interval_ms;
+	next_tick_ms = time_ms() + interval_ms;
 	if (exit_time) {
-		exit_time = time(NULL) + exit_time;}
+		exit_time = time_ms() + exit_time * 1000;
+	}
 	fft_buf = malloc(tunes[0].buf_len * sizeof(int16_t));
 	length = 1 << tunes[0].bin_e;
 	window_coefs = malloc(length * sizeof(int));
@@ -972,10 +973,11 @@ int main(int argc, char **argv)
 	}
 	while (!do_exit) {
 		scanner();
-		time_now = time(NULL);
-		if (time_now < next_tick) {
+		time_now_ms = time_ms();
+		if (time_now_ms < next_tick_ms) {
 			continue;}
 		// time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...
+		time_now = time(NULL);
 		cal_time = localtime(&time_now);
 		strftime(t_str, 50, "%Y-%m-%d, %H:%M:%S", cal_time);
 		for (i=0; i<tune_count; i++) {
@@ -983,11 +985,10 @@ int main(int argc, char **argv)
 			csv_dbm(&tunes[i]);
 		}
 		fflush(file);
-		while (time(NULL) >= next_tick) {
-			next_tick += interval_ms;}
+		next_tick_ms = time_ms() + interval_ms;
 		if (single) {
 			do_exit = 1;}
-		if (exit_time && time(NULL) >= exit_time) {
+		if (exit_time && time_ms() >= exit_time) {
 			do_exit = 1;}
 	}
 
