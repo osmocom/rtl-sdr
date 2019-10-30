@@ -772,7 +772,7 @@ int main(int argc, char **argv)
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;
-	int interval = 10;
+	int interval_ms = 10000;
 	int fft_threads = 1;
 	int smoothing = 0;
 	int single = 0;
@@ -807,7 +807,7 @@ int main(int argc, char **argv)
 			crop = atofp(optarg);
 			break;
 		case 'i':
-			interval = (int)round(atoft(optarg));
+			interval_ms = (int) (atoft(optarg) * 1000);
 			break;
 		case 'e':
 			exit_time = (time_t)((int)round(atoft(optarg)));
@@ -889,10 +889,10 @@ int main(int argc, char **argv)
 		filename = argv[optind];
 	}
 
-	if (interval < 1) {
-		interval = 1;}
+	if (interval_ms < 1) {
+		interval_ms = 1;}
 
-	fprintf(stderr, "Reporting every %i seconds\n", interval);
+	fprintf(stderr, "Reporting every %i milliseconds\n", interval_ms);
 
 	if (!dev_given) {
 		dev_index = verbose_device_search("0");
@@ -961,7 +961,7 @@ int main(int argc, char **argv)
 	/* actually do stuff */
 	rtlsdr_set_sample_rate(dev, (uint32_t)tunes[0].rate);
 	sine_table(tunes[0].bin_e);
-	next_tick = time(NULL) + interval;
+	next_tick = time(NULL) + interval_ms;
 	if (exit_time) {
 		exit_time = time(NULL) + exit_time;}
 	fft_buf = malloc(tunes[0].buf_len * sizeof(int16_t));
@@ -984,7 +984,7 @@ int main(int argc, char **argv)
 		}
 		fflush(file);
 		while (time(NULL) >= next_tick) {
-			next_tick += interval;}
+			next_tick += interval_ms;}
 		if (single) {
 			do_exit = 1;}
 		if (exit_time && time(NULL) >= exit_time) {
