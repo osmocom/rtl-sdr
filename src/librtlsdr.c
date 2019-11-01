@@ -126,6 +126,7 @@ struct rtlsdr_dev {
 	int driver_active;
 	unsigned int xfer_errors;
 	int force_bt;
+	int force_ds;
 };
 
 void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
@@ -1175,6 +1176,8 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 	if (!dev)
 		return -1;
 
+	if(dev->force_ds) on = 2;
+
 	if (on) {
 		if (dev->tuner && dev->tuner->exit) {
 			rtlsdr_set_i2c_repeater(dev, 1);
@@ -1247,11 +1250,12 @@ int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 	if (!dev)
 		return -1;
 
+	// RTL-SDR-BLOG Hack, enables us to turn on the bias tee by clicking on "offset tuning" in software that doesn't have specified bias tee support.
+	// Offset tuning is not used for R820T devices so it is no problem.
+	rtlsdr_set_gpio(dev, 0, on);
+
 	if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
 	    (dev->tuner_type == RTLSDR_TUNER_R828D))
-		// RTL-SDR-BLOG Hack, enables us to turn on the bias tee by clicking on "offset tuning" in software that doesn't have specified bias tee support.
-		// Offset tuning is not used for R820T devices so it is no problem.
-		rtlsdr_set_gpio(dev, 0, on);
 		return -2;
 
 	if (dev->direct_sampling)
@@ -1619,18 +1623,20 @@ found:
 		break;
 	case RTLSDR_TUNER_UNKNOWN:
 		fprintf(stderr, "No supported tuner found\n");
-		rtlsdr_set_direct_sampling(dev, 1);
+		rtlsdr_set_direct_sampling(dev, 2);
 		break;
 	default:
 		break;
 	}
 
 
-        /* Hack to force the Bias T to always be on if we set the IR-Endpoint bit in the EEPROM to 0. */
-        //force_bt = 0;
+    /* Hack to force the Bias T to always be on if we set the IR-Endpoint bit in the EEPROM to 0. Default on EEPROM is 1. */
 	r = rtlsdr_read_eeprom(dev, buf, 0, EEPROM_SIZE);
-        dev->force_bt = (buf[7] & 0x02) ? 0 : 1;
+    dev->force_bt = (buf[7] & 0x02) ? 0 : 1;
 	if(dev->force_bt) rtlsdr_set_gpio(dev, 0, 1);
+	/* Hack to force direct sampling mode to always be on if we set the remote-enabled bit in the EEPROM to 1. Default on EEPROM is 0. */
+	dev->force_ds = (buf[7] & 0x01) ? 1 : 0;
+	if(dev->force_ds) dev->tuner_type = RTLSDR_TUNER_UNKNOWN;
 
 
 	if (dev->tuner->init)
@@ -2049,4 +2055,3 @@ int rtlsdr_set_gpio(rtlsdr_dev_t *dev, int gpio_pin, int on)
 
 	return 1;
 }
-
