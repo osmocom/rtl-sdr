@@ -370,14 +370,14 @@ int main(int argc, char **argv)
 	}
 
 	if (manuf_str)
-		strncpy((char*)&conf.manufacturer, manuf_str, MAX_STR_SIZE);
+		strncpy((char*)&conf.manufacturer, manuf_str, MAX_STR_SIZE - 1);
 
 	if (product_str)
-		strncpy((char*)&conf.product, product_str, MAX_STR_SIZE);
+		strncpy((char*)&conf.product, product_str, MAX_STR_SIZE - 1);
 
 	if (serial_str) {
 		conf.have_serial = 1;
-		strncpy((char*)&conf.serial, serial_str, MAX_STR_SIZE);
+		strncpy((char*)&conf.serial, serial_str, MAX_STR_SIZE - 1);
 	}
 
 	if (ir_endpoint != 0)
