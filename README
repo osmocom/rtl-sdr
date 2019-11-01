@@ -15,6 +15,8 @@ Modified RTL-SDR Blog Version
 6) Hack to force direct sampling to be always on by setting the unused remote-enabled bit to 1 in the EEPROM. Example to force direct samping always "rtl_eeprom -q y". To remove forced direct sampling "rtl_eeprom -q n"
 7) Repurposed "offset tuning" to toggle bias tee ON/OFF. We can now use the "offset tuning" button in SDR# and other programs to toggle the bias tee if there is no specific button in the GUI.
 
+BIAS TEE NOTE: Always take care that you do not enable the bias tee when the device is connected to a short circuited antenna unless there is an inline LNA. However. if you did by accident, don't worry as the circuit is dually protected with a self-resetting thermal fuse and built in protection on the LDO. Just try not to short it out for days at a time, otherwise you could eventually degrade the thermal fuse.
+
 ***
 To install:
 ***
