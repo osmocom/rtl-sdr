@@ -14,3 +14,27 @@ Modified RTL-SDR Blog Version
 5) Hack to force the bias tee to always be on by setting the unused IR endpoint bit to 0 in the EEPROM. Example to force the BT to be always ON "rtl_eeprom -b y", to remove forced BT "rtl_eeprom -b n"
 6) Hack to force direct sampling to be always on by setting the unused remote-enabled bit to 1 in the EEPROM. Example to force direct samping always "rtl_eeprom -q y". To remove forced direct sampling "rtl_eeprom -q n"
 7) Repurposed "offset tuning" to toggle bias tee ON/OFF. We can now use the "offset tuning" button in SDR# and other programs to toggle the bias tee if there is no specific button in the GUI.
+
+***
+To install:
+***
+
+sudo apt update
+sudo apt install libusb-1.0-0-dev git cmake
+git clone git://git.osmocom.org/rtl-sdr.git
+cd rtl-sdr/
+mkdir build
+cd build
+cmake ../ -DINSTALL_UDEV_RULES=ON
+make
+sudo make install
+sudo cp ../rtl-sdr.rules /etc/udev/rules.d/
+sudo ldconfig
+
+echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
+
+***NOTE***
+If you previously installed librtlsdr-dev via the package manager you should remove this first BEFORE installing these drivers. To completely remove these drivers use the following commands
+
+sudo apt purge librtlsdr*
+sudo rm -rvf /usr/lib/librtlsdr* /usr/include/rtl-sdr* /usr/local/lib/librtlsdr* /usr/local/include/rtl-sdr*
