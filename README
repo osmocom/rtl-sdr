@@ -5,7 +5,11 @@ turns your Realtek RTL2832 based DVB dongle into a SDR receiver
 For more information see:
 https://osmocom.org/projects/rtl-sdr/wiki
 
+**********************************************************************
+
+*****************************
 Modified RTL-SDR Blog Version
+*****************************
 
 1) VCO PLL current fix - Improves stability at frequencies above ~1.5 GHz https://www.rtl-sdr.com/beta-testing-a-modified-rtl-sdr-driver-for-l-band-heat-issues/
 2) RTL_TCP ring buffer enhancement by Stephen Blinick https://www.rtl-sdr.com/significantly-improving-rtl_tcps-performance-with-ring-buffers/
@@ -17,9 +21,15 @@ Modified RTL-SDR Blog Version
 
 BIAS TEE NOTE: Always take care that you do not enable the bias tee when the device is connected to a short circuited antenna unless there is an inline LNA. However. if you did by accident, don't worry as the circuit is dually protected with a self-resetting thermal fuse and built in protection on the LDO. Just try not to short it out for days at a time, otherwise you could eventually degrade the thermal fuse.
 
-***
-To install:
-***
+********************
+Installation (Linux):
+********************
+
+***NOTE***
+If you previously installed librtlsdr-dev via the package manager you should remove this first BEFORE installing these drivers. To completely remove these drivers use the following commands
+
+sudo apt purge librtlsdr*
+sudo rm -rvf /usr/lib/librtlsdr* /usr/include/rtl-sdr* /usr/local/lib/librtlsdr* /usr/local/include/rtl-sdr*
 
 sudo apt update
 sudo apt install libusb-1.0-0-dev git cmake
@@ -35,8 +45,8 @@ sudo ldconfig
 
 echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
 
-***NOTE***
-If you previously installed librtlsdr-dev via the package manager you should remove this first BEFORE installing these drivers. To completely remove these drivers use the following commands
+***********************
+Installation (Windows):
+***********************
 
-sudo apt purge librtlsdr*
-sudo rm -rvf /usr/lib/librtlsdr* /usr/include/rtl-sdr* /usr/local/lib/librtlsdr* /usr/local/include/rtl-sdr*
+Download the Release.zip file. Extract the rtlsdr.dll file to the SDR# folder, or whatever software is using it.
