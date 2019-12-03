@@ -34,7 +34,7 @@ RTLSDR_APPEND_SRCS(
 # Set up Windows DLL resource files
 ########################################################################
 IF(MSVC)
-    include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
+    include(${PROJECT_SOURCE_DIR}/cmake/Modules/Version.cmake)
 
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.rc.in
@@ -146,6 +146,7 @@ target_link_libraries(rtl_fm libgetopt_static)
 target_link_libraries(rtl_eeprom libgetopt_static)
 target_link_libraries(rtl_adsb libgetopt_static)
 target_link_libraries(rtl_power libgetopt_static)
+target_link_libraries(rtl_biast libgetopt_static)
 set_property(TARGET rtl_sdr APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 set_property(TARGET rtl_tcp APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 set_property(TARGET rtl_test APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
@@ -153,6 +154,7 @@ set_property(TARGET rtl_fm APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 set_property(TARGET rtl_eeprom APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 set_property(TARGET rtl_adsb APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 set_property(TARGET rtl_power APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+set_property(TARGET rtl_biast APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 endif()
 ########################################################################
 # Install built library files & utilities
