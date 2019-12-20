@@ -49,4 +49,4 @@ echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-
 Installation (Windows):
 ***********************
 
-Download the Release.zip file. Extract the rtlsdr.dll file to the SDR# folder, or whatever software is using it.
+Download the Release.zip file. Extract the librtlsdr.dll file to the SDR# folder, or whatever software is using it. Rename to rtlsdr.dll if necessary (e.g. SDR# looks for rtlsdr.dll instead of librtlsdr.dll)
