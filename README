@@ -33,7 +33,7 @@ sudo rm -rvf /usr/lib/librtlsdr* /usr/include/rtl-sdr* /usr/local/lib/librtlsdr*
 
 sudo apt update
 sudo apt install libusb-1.0-0-dev git cmake
-git clone git://git.osmocom.org/rtl-sdr.git
+git clone git clone git://github.com/rtlsdrblog/rtl-sdr-blog.git
 cd rtl-sdr/
 mkdir build
 cd build
