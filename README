@@ -32,6 +32,8 @@ If you previously installed librtlsdr-dev via the package manager you should rem
 sudo apt purge librtlsdr*
 sudo rm -rvf /usr/lib/librtlsdr* /usr/include/rtl-sdr* /usr/local/lib/librtlsdr* /usr/local/include/rtl-sdr*
 
+***Now install the drivers***
+
 sudo apt update
 sudo apt install libusb-1.0-0-dev git cmake
 git clone git clone git://github.com/rtlsdrblog/rtl-sdr-blog.git
