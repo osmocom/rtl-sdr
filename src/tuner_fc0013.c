@@ -248,11 +248,11 @@ int fc0013_set_params(void *dev, uint32_t freq, uint32_t bandwidth)
 		if (ret)
 			goto exit;
 
-		/* disable UHF & enable GPS */
+		/* enable UHF & disable GPS */
 		ret = fc0013_readreg(dev, 0x14, &tmp);
 		if (ret)
 			goto exit;
-		ret = fc0013_writereg(dev, 0x14, (tmp & 0x1f) | 0x20);
+		ret = fc0013_writereg(dev, 0x14, (tmp & 0x1f) | 0x40);
 		if (ret)
 			goto exit;
 	}
