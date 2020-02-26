@@ -3,10 +3,16 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 export DEB_HOST_MULTIARCH
 
 %:
-	dh $@
+	dh $@ --buildsystem=cmake
 
 override_dh_auto_configure: debian/librtlsdr0.udev
-	dh_auto_configure -- -DLIB_INSTALL_DIR=lib/$(DEB_HOST_MULTIARCH) -DDETACH_KERNEL_DRIVER=ON
+	dh_auto_configure --buildsystem=cmake -- -DDETACH_KERNEL_DRIVER=ON \
+						 -DINSTALL_UDEV_RULES=ON \
+						 -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 debian/librtlsdr0.udev: rtl-sdr.rules
 	cp -p rtl-sdr.rules debian/librtlsdr0.udev
+
+override_dh_acc:
+	- dh_acc
+	- cat debian/librtlsdr-dev/usr/lib/x86_64-linux-gnu/dh-acc/librtlsdr-dev_*_report.html

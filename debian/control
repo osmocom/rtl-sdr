@@ -3,10 +3,11 @@ Section: comm
 Priority: optional
 Maintainer: A. Maitland Bottoms <bottoms@debian.org>
 Build-Depends: cmake,
-               debhelper (>= 9.0.0~),
+               debhelper (>= 10~),
                libusb-1.0-0-dev [linux-any],
                libusb-dev [hurd-i386],
-               libusb2-dev [kfreebsd-any]
+               libusb2-dev [kfreebsd-any],
+	       pkg-config
 Standards-Version: 4.1.4
 Homepage: http://sdr.osmocom.org/trac/wiki/rtl-sdr
 Vcs-Browser: https://salsa.debian.org/bottoms/pkg-rtl-sdr

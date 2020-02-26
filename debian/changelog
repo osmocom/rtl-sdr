@@ -1,4 +1,11 @@
-rtl-sdr (0.6git) unstable; urgency=medium
+rtl-sdr (0.6-1) unstable; urgency=medium
+
+  * New upstream release
+  * with modernize-cmake patch
+
+ -- A. Maitland Bottoms <bottoms@debian.org>  Sat, 06 Oct 2018 20:28:26 -0400
+
+rtl-sdr (0.6~git) unstable; urgency=medium
 
   * New upstream release
 

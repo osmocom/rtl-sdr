@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<descriptor>
+
+<gcc_options>
+  -fPIC
+  -g
+  -O2
+  -fstack-protector-strong
+  -Wformat
+  -Werror=format-security
+  -Wdate-time
+  -D_FORTIFY_SOURCE=2
+  -fvisibility=hidden
+  -Wsign-compare
+  -Wall
+  -Wno-uninitialized
+</gcc_options>
+
+<headers>
+debian/librtlsdr-dev/usr/include/
+</headers>
+
+<libs>
+debian/librtlsdr0/usr/lib/
+</libs>
+
+</descriptor>
