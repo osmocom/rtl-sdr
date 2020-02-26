@@ -19,26 +19,20 @@
 ########################################################################
 # Project setup
 ########################################################################
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.7.2)
 project(rtlsdr C)
-
-# CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
-if(POLICY CMP0075)
-    cmake_policy(SET CMP0075 NEW)
-endif()
 
 #select the release build type by default to get optimization flags
 if(NOT CMAKE_BUILD_TYPE)
    set(CMAKE_BUILD_TYPE "Release")
    message(STATUS "Build type not specified: defaulting to release.")
 endif(NOT CMAKE_BUILD_TYPE)
-set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-if(NOT LIB_INSTALL_DIR)
-   set(LIB_INSTALL_DIR lib)
-endif()
+include(GNUInstallDirs)
+include(GenerateExportHeader)
+include(CMakePackageConfigHelpers)
 
 # Set the version information here
 set(VERSION_INFO_MAJOR_VERSION 0) # increment major on api compatibility changes
@@ -66,12 +60,12 @@ endif()
 ########################################################################
 # Find build dependencies
 ########################################################################
-find_package(PkgConfig)
-find_package(LibUSB)
 if(WIN32 AND NOT MINGW)
     set(THREADS_USE_PTHREADS_WIN32 true)
 endif()
 find_package(Threads)
+find_package(PkgConfig)
+pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
 
 if(NOT LIBUSB_FOUND)
     message(FATAL_ERROR "LibUSB 1.0 required to compile rtl-sdr")
@@ -79,21 +73,6 @@ endif()
 if(NOT THREADS_FOUND)
     message(FATAL_ERROR "pthreads(-win32) required to compile rtl-sdr")
 endif()
-########################################################################
-# Setup the include and linker paths
-########################################################################
-include_directories(
-    ${PROJECT_SOURCE_DIR}/include
-    ${LIBUSB_INCLUDE_DIR}
-    ${THREADS_PTHREADS_INCLUDE_DIR}
-)
-
-#link_directories(
-#    ...
-#)
-
-# Set component parameters
-#set(INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include CACHE INTERNAL "" FORCE)
 
 ########################################################################
 # Create uninstall target
@@ -138,9 +117,17 @@ else (ENABLE_ZEROCOPY)
 endif (ENABLE_ZEROCOPY)
 
 ########################################################################
+# Install public header files
+########################################################################
+install(FILES
+    include/rtl-sdr.h
+    include/rtl-sdr_export.h
+    DESTINATION include
+)
+
+########################################################################
 # Add subdirectories
 ########################################################################
-add_subdirectory(include)
 add_subdirectory(src)
 
 ########################################################################
@@ -164,11 +151,6 @@ IF(CMAKE_CROSSCOMPILING)
     UNSET(RTLSDR_PC_LIBS)
 ENDIF(CMAKE_CROSSCOMPILING)
 
-set(prefix ${CMAKE_INSTALL_PREFIX})
-set(exec_prefix \${prefix})
-set(libdir \${exec_prefix}/${LIB_INSTALL_DIR})
-set(includedir \${prefix}/include)
-
 CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/librtlsdr.pc.in
     ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
@@ -176,8 +158,36 @@ CONFIGURE_FILE(
 
 INSTALL(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
-    DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
+
+########################################################################
+# Create CMake Config File
+########################################################################
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/rtlsdr/rtlsdrConfigVersion.cmake"
+  VERSION ${VERSION}
+  COMPATIBILITY AnyNewerVersion
+  )
+
+configure_file(cmake/rtlsdrConfig.cmake
+  "${CMAKE_CURRENT_BINARY_DIR}/rtlsdr/rtlsdrConfig.cmake"
+  COPYONLY
+  )
+
+set(ConfigPackageLocation lib/cmake/rtlsdr)
+install(EXPORT RTLSDR-export
+  FILE rtlsdrTargets.cmake
+  NAMESPACE rtlsdr::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rtlsdr/
+  )
+install(
+  FILES
+  cmake/rtlsdrConfig.cmake
+  "${CMAKE_CURRENT_BINARY_DIR}/rtlsdr/rtlsdrConfigVersion.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rtlsdr/
+  COMPONENT Devel
+  )
 
 ########################################################################
 # Print Summary
