@@ -394,7 +394,7 @@ int main(int argc, char **argv)
 	void *status;
 	struct timeval tv = {1,0};
 	struct linger ling = {1,0};
-	SOCKET listensocket;
+	SOCKET listensocket = 0;
 	socklen_t rlen;
 	fd_set readfds;
 	u_long blockmode = 1;
