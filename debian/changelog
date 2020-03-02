@@ -1,4 +1,4 @@
-rtl-sdr (0.6-1) unstable; urgency=medium
+rtl-sdr (0.6) unstable; urgency=medium
 
   * New upstream release
   * with modernize-cmake patch
