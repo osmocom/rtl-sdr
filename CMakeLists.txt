@@ -20,7 +20,13 @@
 # Project setup
 ########################################################################
 cmake_minimum_required(VERSION 3.7.2)
-project(rtlsdr C)
+
+# workaround for https://gitlab.kitware.com/cmake/cmake/issues/16967
+if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
+    project(rtlsdr)
+else()
+    project(rtlsdr C)
+endif()
 
 #select the release build type by default to get optimization flags
 if(NOT CMAKE_BUILD_TYPE)
