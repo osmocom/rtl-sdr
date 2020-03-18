@@ -330,8 +330,14 @@ static int r82xx_read(struct r82xx_priv *priv, uint8_t reg, uint8_t *val, int le
 	priv->buf[0] = reg;
 
 	rc = rtlsdr_i2c_write_fn(priv->rtl_dev, priv->cfg->i2c_addr, priv->buf, 1);
-	if (rc < 1)
-		return rc;
+
+	if (rc != 1) {
+		fprintf(stderr, "%s: i2c wr failed=%d reg=%02x len=%d\n",
+			   __FUNCTION__, rc, reg, 1);
+		if (rc < 0)
+			return rc;
+		return -1;
+	}
 
 	rc = rtlsdr_i2c_read_fn(priv->rtl_dev, priv->cfg->i2c_addr, p, len);
 
