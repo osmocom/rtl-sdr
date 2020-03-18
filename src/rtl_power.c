@@ -769,7 +769,6 @@ int main(int argc, char **argv)
 #endif
 	char *filename = NULL;
 	int i, length, r, opt, wb_mode = 0;
-	int f_set = 0;
 	int gain = AUTO_GAIN; // tenths of a dB
 	int dev_index = 0;
 	int dev_given = 0;
@@ -782,20 +781,19 @@ int main(int argc, char **argv)
 	int offset_tuning = 0;
 	int enable_biastee = 0;
 	double crop = 0.0;
-	char *freq_optarg;
+	char *freq_optarg = NULL;
 	time_t next_tick;
 	time_t time_now;
 	time_t exit_time = 0;
 	char t_str[50];
 	struct tm *cal_time;
 	double (*window_fn)(int, int) = rectangle;
-	freq_optarg = "";
 
 	while ((opt = getopt(argc, argv, "f:i:s:t:d:g:p:e:w:c:F:1PDOhT")) != -1) {
 		switch (opt) {
 		case 'f': // lower:upper:bin_size
+			free(freq_optarg);
 			freq_optarg = strdup(optarg);
-			f_set = 1;
 			break;
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -869,7 +867,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!f_set) {
+	if (!freq_optarg) {
 		fprintf(stderr, "No frequency range provided.\n");
 		exit(1);
 	}
