@@ -268,6 +268,16 @@ int verbose_device_search(char *s)
 			device, rtlsdr_get_device_name((uint32_t)device));
 		return device;
 	}
+	/* does string match a path */
+	if (s2[0] == '-') {
+		i = rtlsdr_get_index_by_path(s);
+		if (i >= 0) {
+			device = i;
+			fprintf(stderr, "Using device %d: %s\n",
+				device, rtlsdr_get_device_name((uint32_t)device));
+			return device;
+		}
+	}
 	/* does string exact match a serial */
 	for (i = 0; i < device_count; i++) {
 		rtlsdr_get_device_usb_strings(i, vendor, product, serial);

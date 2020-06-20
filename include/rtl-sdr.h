@@ -50,6 +50,31 @@ RTLSDR_API int rtlsdr_get_device_usb_strings(uint32_t index,
 					     char *serial);
 
 /*!
+ * Get device index by USB path string.
+ *
+ * The path string has the format "bus-port.port..."
+ * (i.e. the bus number, followed by a hyphen, then
+ * followed by the port numbers separated by dots).
+ *
+ * \param path path string of the device
+ * \return device index of the device with the given path
+ * \return -1 if no matching device was found.
+ */
+RTLSDR_API int rtlsdr_get_index_by_path(const char *path);
+
+/*!
+ * Get the USB path.
+ *
+ * NOTE: The buffer should provide space for at least 32 bytes.
+ *
+ * \param index the device index
+ * \param buf buffer where the path will be written
+ * \param len size of the buffer
+ * \return 0 on success
+ */
+RTLSDR_API int rtlsdr_get_device_path(uint32_t index, char *buf, size_t len);
+
+/*!
  * Get device index by USB serial string descriptor.
  *
  * \param serial serial string of the device

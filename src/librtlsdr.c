@@ -1414,6 +1414,127 @@ int rtlsdr_get_device_usb_strings(uint32_t index, char *manufact,
 	return r;
 }
 
+static void get_device_path(libusb_device *dev, char *buf, size_t len)
+{
+	uint8_t port_numbers[16];
+	int port_entries;
+	int i, count;
+
+	count = snprintf(buf, len, "%d-", (int)libusb_get_bus_number(dev));
+	if (count < 0) {
+		buf[0] = 0;
+		return;
+	}
+	else if ((size_t)count >= len) {
+		buf[len-1] = 0;
+		return;
+	}
+
+	len -= count;
+	buf += count;
+
+	port_entries = libusb_get_port_numbers(dev, port_numbers, sizeof(port_numbers)/sizeof(port_numbers[0]));
+	if (port_entries < 0)
+		return;
+
+	for (i = 0; i < port_entries; i++) {
+		count = snprintf(buf, len, i ? ".%d" : "%d", (int) port_numbers[i]);
+
+		if (count < 0) {
+			buf[0] = 0;
+			break;
+		}
+		else if ((size_t)count >= len) {
+			buf[len-1] = 0;
+			break;
+		}
+
+		len -= count;
+		buf += count;
+	}
+
+	if (!port_entries && len > 1) {
+		buf[0] = '0';
+		buf[1] = 0;
+	}
+}
+
+int rtlsdr_get_index_by_path(const char *path)
+{
+	libusb_context *ctx;
+	libusb_device **list;
+	struct libusb_device_descriptor dd;
+	ssize_t cnt;
+	int i,r,pos;
+
+	r = libusb_init(&ctx);
+
+	if(r < 0)
+		return -1;
+
+	cnt = libusb_get_device_list(ctx, &list);
+
+	pos = 0;
+	for (i = 0; i < cnt; i++) {
+		libusb_get_device_descriptor(list[i], &dd);
+
+		if (find_known_device(dd.idVendor, dd.idProduct)) {
+			char buf[64];
+			get_device_path(list[i], buf, sizeof(buf));
+
+			if (!strncmp(path, buf, sizeof(buf))) {
+				libusb_free_device_list(list, 1);
+				libusb_exit(ctx);
+
+				return pos;
+			}
+
+			pos++;
+		}
+	}
+
+	libusb_free_device_list(list, 1);
+	libusb_exit(ctx);
+
+	return -1;
+}
+
+int rtlsdr_get_device_path(uint32_t index, char *buf, size_t len)
+{
+	libusb_context *ctx;
+	libusb_device **list;
+	struct libusb_device_descriptor dd;
+	int i,r;
+	uint32_t device_count = 0;
+	ssize_t cnt;
+
+	r = libusb_init(&ctx);
+	if(r < 0)
+		return r;
+
+	cnt = libusb_get_device_list(ctx, &list);
+
+	r = LIBUSB_ERROR_NO_DEVICE;
+	for (i = 0; i < cnt; i++) {
+		libusb_get_device_descriptor(list[i], &dd);
+
+		if (find_known_device(dd.idVendor, dd.idProduct)) {
+			device_count++;
+
+			if (index == device_count - 1) {
+				get_device_path(list[i], buf, len);
+				r = 0;
+				break;
+			}
+		}
+	}
+
+	libusb_free_device_list(list, 1);
+	libusb_exit(ctx);
+
+	return r;
+}
+
 int rtlsdr_get_index_by_serial(const char *serial)
 {
 	int i, cnt, r;
