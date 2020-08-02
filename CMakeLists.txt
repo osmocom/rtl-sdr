@@ -157,6 +157,11 @@ IF(CMAKE_CROSSCOMPILING)
     UNSET(RTLSDR_PC_LIBS)
 ENDIF(CMAKE_CROSSCOMPILING)
 
+set(prefix "${CMAKE_INSTALL_PREFIX}")
+set(exec_prefix \${prefix})
+set(includedir \${prefix}/include)
+set(libdir \${exec_prefix}/lib)
+
 CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/librtlsdr.pc.in
     ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
