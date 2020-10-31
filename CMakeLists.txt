@@ -66,14 +66,25 @@ endif()
 ########################################################################
 # Find build dependencies
 ########################################################################
-if(WIN32 AND NOT MINGW)
-    set(THREADS_USE_PTHREADS_WIN32 true)
-endif()
 find_package(Threads)
 find_package(PkgConfig)
-pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
 
-if(NOT LIBUSB_FOUND)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
+else()
+    set(LIBUSB_LIBRARIES "" CACHE STRING "manual libusb path")
+    set(LIBUSB_INCLUDE_DIRS "" CACHE STRING "manual libusb includepath")
+endif()
+
+if(MSVC)
+    set(THREADS_PTHREADS_LIBRARY "" CACHE STRING "manual pthread-win32 path")
+    set(THREADS_PTHREADS_INCLUDE_DIR "" CACHE STRING "manual pthread-win32 includepath")
+else()
+    set(THREADS_PTHREADS_LIBRARY "" CACHE INTERNAL "manual pthread-win32 path")
+    set(THREADS_PTHREADS_INCLUDE_DIR "" CACHE INTERNAL "manual pthread-win32 includepath")
+endif()
+
+if(PKG_CONFIG_FOUND AND NOT LIBUSB_FOUND)
     message(FATAL_ERROR "LibUSB 1.0 required to compile rtl-sdr")
 endif()
 if(NOT THREADS_FOUND)
@@ -139,7 +150,7 @@ add_subdirectory(src)
 ########################################################################
 # Create Pkg Config File
 ########################################################################
-FOREACH(inc ${LIBUSB_INCLUDE_DIR})
+FOREACH(inc ${LIBUSB_INCLUDEDIR})
     LIST(APPEND RTLSDR_PC_CFLAGS "-I${inc}")
 ENDFOREACH(inc)
 

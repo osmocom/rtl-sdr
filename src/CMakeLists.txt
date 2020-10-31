@@ -20,10 +20,12 @@
 ########################################################################
 add_library(rtlsdr SHARED librtlsdr.c
   tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_r82xx.c)
-target_link_libraries(rtlsdr PkgConfig::LIBUSB)
+target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
 target_include_directories(rtlsdr PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
+  ${LIBUSB_INCLUDE_DIRS}
+  ${THREADS_PTHREADS_INCLUDE_DIR}
   )
 set_target_properties(rtlsdr PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
 set_target_properties(rtlsdr PROPERTIES OUTPUT_NAME rtlsdr)
@@ -36,10 +38,12 @@ generate_export_header(rtlsdr)
 ########################################################################
 add_library(rtlsdr_static STATIC librtlsdr.c
   tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_r82xx.c)
-target_link_libraries(rtlsdr_static PkgConfig::LIBUSB)
+target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
+  ${LIBUSB_INCLUDE_DIRS}
+  ${THREADS_PTHREADS_INCLUDE_DIR}
   )
 set_property(TARGET rtlsdr_static APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 if(NOT WIN32)
@@ -58,8 +62,8 @@ IF(MSVC)
         ${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.rc.in
         ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc
     @ONLY)
-  target_sources(rtlsdr ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-  target_sources(rtlsdr_static ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+  target_sources(rtlsdr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+  target_sources(rtlsdr_static PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
 ENDIF(MSVC)
 
 ########################################################################
