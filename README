@@ -22,7 +22,7 @@ Modified RTL-SDR Blog Version
 
 BIAS TEE NOTE: Always take care that you do not enable the bias tee when the device is connected to a short circuited antenna unless there is an inline LNA. However. if you did by accident, don't worry as the circuit is dually protected with a self-resetting thermal fuse and built in protection on the LDO. Just try not to short it out for days at a time, otherwise you could eventually degrade the thermal fuse.
 
-Note that Hacks 5) and 6) will only work if your system is using this driver. If it uses another driver branch, then the EEPROM information will not be read. So make sure you completely clean your system of the previous drivers first (with the information below) and ensure you run sudo make install after compiling.
+Note that hacks 5) and 6) will only work if your system is using this driver. If it uses another driver branch, then the EEPROM information will not be read. So make sure you completely clean your system of the previous drivers first (with the information below) and ensure you run sudo make install after compiling.
 
 ********************
 Installation (Linux):
