@@ -201,11 +201,12 @@ void usage(void)
 		"\t[-p ppm_error (default: 0)]\n"
 		"\t[-E enable_option (default: none)]\n"
 		"\t    use multiple -E to enable multiple options\n"
-		"\t    edge:   enable lower edge tuning\n"
-		"\t    dc:     enable dc blocking filter\n"
-		"\t    deemp:  enable de-emphasis filter\n"
-		"\t    direct: enable direct sampling\n"
-		"\t    offset: enable offset tuning\n"
+		"\t    edge:    enable lower edge tuning\n"
+		"\t    dc:      enable dc blocking filter\n"
+		"\t    deemp:   enable de-emphasis filter\n"
+		"\t    direct:  enable direct sampling 1 (usually I)\n"
+		"\t    direct2: enable direct sampling 2 (usually Q)\n"
+		"\t    offset:  enable offset tuning\n"
 		"\tfilename ('-' means stdout)\n"
 		"\t    omitting the filename also uses stdout\n\n"
 		"Experimental options:\n"
@@ -892,7 +893,7 @@ static void *controller_thread_fn(void *arg)
 	/* set up primary channel */
 	optimal_settings(s->freqs[0], demod.rate_in);
 	if (dongle.direct_sampling) {
-		verbose_direct_sampling(dongle.dev, 1);}
+		verbose_direct_sampling(dongle.dev, dongle.direct_sampling);}
 	if (dongle.offset_tuning) {
 		verbose_offset_tuning(dongle.dev);}
 
@@ -1119,6 +1120,8 @@ int main(int argc, char **argv)
 				demod.deemph = 1;}
 			if (strcmp("direct",  optarg) == 0) {
 				dongle.direct_sampling = 1;}
+			if (strcmp("direct2", optarg) == 0) {
+				dongle.direct_sampling = 2;}
 			if (strcmp("offset",  optarg) == 0) {
 				dongle.offset_tuning = 1;}
 			break;
