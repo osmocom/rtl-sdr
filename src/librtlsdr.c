@@ -39,12 +39,6 @@
 #define LIBUSB_CALL
 #endif
 
-/* libusb < 1.0.9 doesn't have libusb_handle_events_timeout_completed */
-#ifndef HAVE_LIBUSB_HANDLE_EVENTS_TIMEOUT_COMPLETED
-#define libusb_handle_events_timeout_completed(ctx, tv, c) \
-	libusb_handle_events_timeout(ctx, tv)
-#endif
-
 /* two raised to the power of n */
 #define TWO_POW(n)		((double)(1ULL<<(n)))
 
