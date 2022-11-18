@@ -195,6 +195,7 @@ sighandler(int signum)
 #else
 static void sighandler(int signum)
 {
+	signal(SIGPIPE, SIG_IGN);
 	do_exit++;
 	multi_bail();
 }

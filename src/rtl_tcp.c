@@ -144,6 +144,7 @@ sighandler(int signum)
 #else
 static void sighandler(int signum)
 {
+	signal(SIGPIPE, SIG_IGN);
 	fprintf(stderr, "Signal caught, exiting!\n");
 	rtlsdr_cancel_async(dev);
 	do_exit = 1;
