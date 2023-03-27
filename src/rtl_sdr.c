@@ -113,6 +113,7 @@ int main(int argc, char **argv)
 	int n_read;
 	int r, opt;
 	int gain = 0;
+	int direct_sampling = 0;
 	int ppm_error = 0;
 	int sync_mode = 0;
 	FILE *file;
@@ -122,7 +123,7 @@ int main(int argc, char **argv)
 	uint32_t frequency = 100000000;
 	uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
-	int direct_sampling = 0;
+	
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:n:p:S:D:")) != -1) {
 		switch (opt) {
 		case 'd':
