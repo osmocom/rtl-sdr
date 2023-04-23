@@ -562,7 +562,7 @@ int main(int argc, char **argv)
 		setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
 		setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
 
-		if (bind(listensocket, (struct sockaddr *)&local, sizeof(local)))
+		if (bind(listensocket, (struct sockaddr *)&local, ai->ai_addrlen))
 			fprintf(stderr, "rtl_tcp bind error: %s", strerror(errno));
 		else
 			break;
