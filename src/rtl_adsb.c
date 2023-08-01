@@ -90,7 +90,7 @@ void usage(void)
 		"rtl_adsb, a simple ADS-B decoder\n\n"
 		"Use:\trtl_adsb [-R] [-g gain] [-p ppm] [output file]\n"
 		"\t[-d device_index (default: 0)]\n"
-		"\t[-V verbove output (default: off)]\n"
+		"\t[-V verbose output (default: off)]\n"
 		"\t[-S show short frames (default: off)]\n"
 		"\t[-Q quality (0: no sanity checks, 0.5: half bit, 1: one bit (default), 2: two bits)]\n"
 		"\t[-e allowed_errors (default: 5)]\n"
