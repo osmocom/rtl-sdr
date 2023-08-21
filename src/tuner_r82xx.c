@@ -33,6 +33,10 @@
 #define MHZ(x)		((x)*1000*1000)
 #define KHZ(x)		((x)*1000)
 
+#define HF 1
+#define VHF 2
+#define UHF 3
+
 /*
  * Static constants
  */
@@ -1098,8 +1102,23 @@ int r82xx_set_bandwidth(struct r82xx_priv *priv, int bw, uint32_t rate)
 int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 {
 	int rc = -1;
-	uint32_t lo_freq = freq + priv->int_freq;
+	int is_rtlsdr_blog_v4;
+	uint32_t upconvert_freq;
+	uint32_t lo_freq;
 	uint8_t air_cable1_in;
+	uint8_t open_d;
+	uint8_t band;
+	uint8_t cable_2_in;
+	uint8_t cable_1_in;
+	uint8_t air_in;
+
+	is_rtlsdr_blog_v4 = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4");
+
+	/* if it's an RTL-SDR Blog V4, automatically upconvert by 28.8 MHz if we tune to HF
+	 * so that we don't need to manually set any upconvert offset in the SDR software */
+	upconvert_freq = is_rtlsdr_blog_v4 ? ((freq < MHZ(28.8)) ? (freq + MHZ(28.8)) : freq) : freq;
+
+	lo_freq = upconvert_freq + priv->int_freq;
 
 	rc = r82xx_set_mux(priv, lo_freq);
 	if (rc < 0)
@@ -1109,16 +1128,60 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 	if (rc < 0 || !priv->has_lock)
 		goto err;
 
-	/* switch between 'Cable1' and 'Air-In' inputs on sticks with
-	 * R828D tuner. We switch at 345 MHz, because that's where the
-	 * noise-floor has about the same level with identical LNA
-	 * settings. The original driver used 320 MHz. */
-	air_cable1_in = (freq > MHZ(345)) ? 0x00 : 0x60;
+	if (is_rtlsdr_blog_v4) {
+		/* determine if notch filters should be on or off notches are turned OFF
+		 * when tuned within the notch band and ON when tuned outside the notch band.
+		 */
+		open_d = (freq <= MHZ(2.2) || (freq >= MHZ(85) && freq <= MHZ(112)) || (freq >= MHZ(172) && freq <= MHZ(242))) ? 0x00 : 0x08;
+		rc = r82xx_write_reg_mask(priv, 0x17, open_d, 0x08);
 
-	if ((priv->cfg->rafael_chip == CHIP_R828D) &&
-	    (air_cable1_in != priv->input)) {
-		priv->input = air_cable1_in;
-		rc = r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
+		if (rc < 0)
+			return rc;
+
+		/* select tuner band based on frequency and only switch if there is a band change
+		 *(to avoid excessive register writes when tuning rapidly)
+		 */
+		band = (freq <= MHZ(28.8)) ? HF : ((freq > MHZ(28.8) && freq < MHZ(250)) ? VHF : UHF);
+
+		/* switch between tuner inputs on the RTL-SDR Blog V4 */
+		if (band != priv->input) {
+			priv->input = band;
+
+			/* activate cable 2 (HF input) */
+			cable_2_in = (band == HF) ? 0x08 : 0x00;
+			rc = r82xx_write_reg_mask(priv, 0x06, cable_2_in, 0x08);
+
+			if (rc < 0)
+				goto err;
+
+			/* activate cable 1 (VHF input) */
+			cable_1_in = (band == VHF) ? 0x40 : 0x00;
+			rc = r82xx_write_reg_mask(priv, 0x05, cable_1_in, 0x40);
+
+			if (rc < 0)
+				goto err;
+
+			/* activate air_in (UHF input) */
+			air_in = (band == UHF) ? 0x00 : 0x20;
+			rc = r82xx_write_reg_mask(priv, 0x05, air_in, 0x20);
+
+			if (rc < 0)
+				goto err;
+		}
+	}
+	else /* Standard R828D dongle*/
+	{
+		/* switch between 'Cable1' and 'Air-In' inputs on sticks with
+		* R828D tuner. We switch at 345 MHz, because that's where the
+		* noise-floor has about the same level with identical LNA
+		* settings. The original driver used 320 MHz. */
+		air_cable1_in = (freq > MHZ(345)) ? 0x00 : 0x60;
+
+		if ((priv->cfg->rafael_chip == CHIP_R828D) &&
+			(air_cable1_in != priv->input)) {
+			priv->input = air_cable1_in;
+			rc = r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
+		}
 	}
 
 err:
