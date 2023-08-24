@@ -488,9 +488,8 @@ int main(int argc, char **argv)
 #endif
 
 	/* Set direct sampling */
-        if (direct_sampling) {
+        if (direct_sampling)
                 verbose_direct_sampling(dev, 2);
-        }
 
 	/* Set the tuner error */
 	verbose_ppm_set(dev, ppm_error);

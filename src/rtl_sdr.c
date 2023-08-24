@@ -55,6 +55,7 @@ void usage(void)
 		"\t[-b output_block_size (default: 16 * 16384)]\n"
 		"\t[-n number of samples to read (default: 0, infinite)]\n"
 		"\t[-S force sync output (default: async)]\n"
+		"\t[-D enable direct sampling (default: off)]\n"
 		"\tfilename (a '-' dumps samples to stdout)\n\n");
 	exit(1);
 }
@@ -113,6 +114,7 @@ int main(int argc, char **argv)
 	int r, opt;
 	int gain = 0;
 	int ppm_error = 0;
+	int direct_sampling = 0;
 	int sync_mode = 0;
 	FILE *file;
 	uint8_t *buffer;
@@ -122,7 +124,7 @@ int main(int argc, char **argv)
 	uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:n:p:S")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:n:p:SD")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -148,6 +150,9 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			sync_mode = 1;
+			break;
+		case 'D':
+			direct_sampling = 1;
 			break;
 		default:
 			usage();
@@ -198,6 +203,11 @@ int main(int argc, char **argv)
 #else
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
+
+	/* Set direct sampling */
+        if (direct_sampling)
+                verbose_direct_sampling(dev, 2);
+
 	/* Set the sample rate */
 	verbose_set_sample_rate(dev, samp_rate);
 
