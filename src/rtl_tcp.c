@@ -385,7 +385,7 @@ int main(int argc, char **argv)
 	struct sockaddr_storage local, remote;
 	struct addrinfo *ai;
 	struct addrinfo *aiHead;
-	struct addrinfo  hints;
+	struct addrinfo  hints = { 0 };
 	char hostinfo[NI_MAXHOST];
 	char portinfo[NI_MAXSERV];
 	char remhostinfo[NI_MAXHOST];
