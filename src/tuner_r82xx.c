@@ -1154,6 +1154,12 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 			if (rc < 0)
 				goto err;
 
+			/* Control upconverter GPIO switch on newer batches */
+			rc = rtlsdr_set_bias_tee_gpio(priv->rtl_dev, 5, !cable_2_in);
+
+			if (rc < 0)
+				goto err;
+
 			/* activate cable 1 (VHF input) */
 			cable_1_in = (band == VHF) ? 0x40 : 0x00;
 			rc = r82xx_write_reg_mask(priv, 0x05, cable_1_in, 0x40);
