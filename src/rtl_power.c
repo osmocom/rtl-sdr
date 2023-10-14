@@ -922,7 +922,7 @@ int main(int argc, char **argv)
 #endif
 
 	if (direct_sampling) {
-		verbose_direct_sampling(dev, 1);
+		verbose_direct_sampling(dev, 2);
 	}
 
 	if (offset_tuning) {
