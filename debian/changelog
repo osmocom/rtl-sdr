@@ -1,3 +1,10 @@
+rtl-sdr (2.0.1) unstable; urgency=medium
+
+  * debian/changelog: update for 2.0.0 and 2.0.1
+  * gitignore: add files created by autotools
+
+ -- Oliver Smith <osmith@sysmocom.de>  Fri, 03 Nov 2023 10:19:41 +0100
+
 rtl-sdr (2.0.0) unstable; urgency=medium
 
   [ Derrick Pallas ]
