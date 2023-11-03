@@ -1,3 +1,49 @@
+rtl-sdr (2.0.0) unstable; urgency=medium
+
+  [ Derrick Pallas ]
+  * tuner_r82xx: fix short-write in r82xx_read
+
+  [ Steve Markgraf ]
+  * Add rtl_biast as install target
+
+  [ Eric Wild ]
+  * cmake: populate pkgconfig file with prefix
+  * fix windows build
+
+  [ David Neiss ]
+  * rtl_tcp: Extracted some constants out of printf strings
+
+  [ Oliver Smith ]
+  * rtl_tcp: put new DEFAULT_* constants in defines
+
+  [ Doug Hammond ]
+  * rtl_fm: add a new option to select 2nd direct sampling mode
+
+  [ Martin Hauke ]
+  * Fix minGW build
+
+  [ jvde.github ]
+  * lib: force wait state after cancel of usb transfer
+
+  [ Clayton Smith ]
+  * lib: Stop applying workaround for libusb < 1.0.9
+
+  [ Tobias Girstmair ]
+  * Fix signal handler from getting stuck in an endless loop
+
+  [ rtlsdrblog ]
+  * add rtl-sdr blog v4 support
+  * fix rtl_tcp on macos
+  * fix rtl_tcp error on windows when hints not initialized to 0
+  * add blog v4 upconverter gpio switch
+  * add -D direct sampling flag to rtl_tcp
+  * add direct sampling to rtl_sdr
+
+  [ Steve Markgraf ]
+  * change version to 2.0.0
+
+ -- Oliver Smith <osmith@sysmocom.de>  Fri, 03 Nov 2023 10:15:31 +0100
+
 rtl-sdr (0.6) unstable; urgency=medium
 
   * New upstream release
