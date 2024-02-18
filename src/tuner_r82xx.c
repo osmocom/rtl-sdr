@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "rtlsdr_i2c.h"
 #include "tuner_r82xx.h"
@@ -243,6 +244,7 @@ static void shadow_store(struct r82xx_priv *priv, uint8_t reg, const uint8_t *va
 
 	if (r < 0) {
 		len += r;
+		val -= r;
 		r = 0;
 	}
 	if (len <= 0)
@@ -253,10 +255,28 @@ static void shadow_store(struct r82xx_priv *priv, uint8_t reg, const uint8_t *va
 	memcpy(&priv->regs[r], val, len);
 }
 
+static bool shadow_equal(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
+			 int len)
+{
+	int r = reg - REG_SHADOW_START;
+
+	if (r < 0 || len < 0 || len > NUM_REGS - r)
+		return false;
+
+	if (memcmp(&priv->regs[r], val, len) == 0)
+		return true;
+
+	return false;
+}
+
 static int r82xx_write(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
 		       unsigned int len)
 {
 	int rc, size, pos = 0;
+
+	/* Avoid setting registers unnecessarily since it's slow */
+	if (shadow_equal(priv, reg, val, len))
+		return 0;
 
 	/* Store the shadow registers */
 	shadow_store(priv, reg, val, len);
@@ -1320,6 +1340,7 @@ int r82xx_init(struct r82xx_priv *priv)
 	priv->xtal_cap_sel = XTAL_HIGH_CAP_0P;
 
 	/* Initialize registers */
+	memset(priv->regs, 0, NUM_REGS);
 	rc = r82xx_write(priv, 0x05,
 			 r82xx_init_array, sizeof(r82xx_init_array));
 
