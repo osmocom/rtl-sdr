@@ -444,6 +444,11 @@ static int r82xx_set_mux(struct r82xx_priv *priv, uint32_t freq)
 	return rc;
 }
 
+static inline uint8_t mask_reg8(uint8_t reg, uint8_t val, uint8_t mask)
+{
+	return (reg & ~mask) | (val & mask);
+}
+
 static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 {
 	int rc, i;
@@ -461,24 +466,24 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	uint8_t refdiv2 = 0;
 	uint8_t ni, si, nint, vco_fine_tune, val;
 	uint8_t data[5];
+	uint8_t regs[7];
 
 	/* Frequency in kHz */
 	freq_khz = (freq + 500) / 1000;
 	pll_ref = priv->cfg->xtal;
-
-	rc = r82xx_write_reg_mask(priv, 0x10, refdiv2, 0x10);
-	if (rc < 0)
-		return rc;
 
 	/* set pll autotune = 128kHz */
 	rc = r82xx_write_reg_mask(priv, 0x1a, 0x00, 0x0c);
 	if (rc < 0)
 		return rc;
 
+	/* regs 0x10 to 0x16 */
+	memcpy(regs, &priv->regs[0x10 - REG_SHADOW_START], 7);
+
+	regs[0] = mask_reg8(regs[0], refdiv2, 0x10);
+
 	/* set VCO current = 100 */
-	rc = r82xx_write_reg_mask(priv, 0x12, 0x80, 0xe0);
-	if (rc < 0)
-		return rc;
+	regs[2] = mask_reg8(regs[2], 0x80, 0xe0);
 
 	/* Calculate divider */
 	while (mix_div <= 64) {
@@ -508,9 +513,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	else if (vco_fine_tune < vco_power_ref)
 		div_num = div_num + 1;
 
-	rc = r82xx_write_reg_mask(priv, 0x10, div_num << 5, 0xe0);
-	if (rc < 0)
-		return rc;
+	regs[0] = mask_reg8(regs[0], div_num << 5, 0xe0);
 
 	vco_freq = (uint64_t)freq * (uint64_t)mix_div;
 
@@ -540,9 +543,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	ni = (nint - 13) / 4;
 	si = nint - 4 * ni - 13;
 
-	rc = r82xx_write_reg(priv, 0x14, ni + (si << 6));
-	if (rc < 0)
-		return rc;
+	regs[4] = ni + (si << 6);
 
 	/* pw_sdm */
 	if (sdm == 0)
@@ -550,14 +551,12 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	else
 		val = 0x00;
 
-	rc = r82xx_write_reg_mask(priv, 0x12, val, 0x08);
-	if (rc < 0)
-		return rc;
+	regs[2] = mask_reg8(regs[2], val, 0x08);
 
-	rc = r82xx_write_reg(priv, 0x16, sdm >> 8);
-	if (rc < 0)
-		return rc;
-	rc = r82xx_write_reg(priv, 0x15, sdm & 0xff);
+	regs[5] = sdm & 0xff;
+	regs[6] = sdm >> 8;
+
+	rc = r82xx_write(priv, 0x10, regs, 7);
 	if (rc < 0)
 		return rc;
 
