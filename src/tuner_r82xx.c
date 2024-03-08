@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "rtlsdr_i2c.h"
 #include "tuner_r82xx.h"
@@ -243,6 +244,7 @@ static void shadow_store(struct r82xx_priv *priv, uint8_t reg, const uint8_t *va
 
 	if (r < 0) {
 		len += r;
+		val -= r;
 		r = 0;
 	}
 	if (len <= 0)
@@ -253,10 +255,28 @@ static void shadow_store(struct r82xx_priv *priv, uint8_t reg, const uint8_t *va
 	memcpy(&priv->regs[r], val, len);
 }
 
+static bool shadow_equal(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
+			 int len)
+{
+	int r = reg - REG_SHADOW_START;
+
+	if (r < 0 || len < 0 || len > NUM_REGS - r)
+		return false;
+
+	if (memcmp(&priv->regs[r], val, len) == 0)
+		return true;
+
+	return false;
+}
+
 static int r82xx_write(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
 		       unsigned int len)
 {
 	int rc, size, pos = 0;
+
+	/* Avoid setting registers unnecessarily since it's slow */
+	if (shadow_equal(priv, reg, val, len))
+		return 0;
 
 	/* Store the shadow registers */
 	shadow_store(priv, reg, val, len);
@@ -424,17 +444,21 @@ static int r82xx_set_mux(struct r82xx_priv *priv, uint32_t freq)
 	return rc;
 }
 
+static inline uint8_t mask_reg8(uint8_t reg, uint8_t val, uint8_t mask)
+{
+	return (reg & ~mask) | (val & mask);
+}
+
 static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 {
 	int rc, i;
 	unsigned sleep_time = 10000;
 	uint64_t vco_freq;
-	uint32_t vco_fra;	/* VCO contribution by SDM (kHz) */
-	uint32_t vco_min = 1770000;
-	uint32_t vco_max = vco_min * 2;
-	uint32_t freq_khz, pll_ref, pll_ref_khz;
-	uint16_t n_sdm = 2;
-	uint16_t sdm = 0;
+	uint64_t vco_div;
+	uint32_t vco_min = 1770000; /* kHz */
+	uint32_t vco_max = vco_min * 2; /* kHz */
+	uint32_t freq_khz, pll_ref;
+	uint32_t sdm = 0;
 	uint8_t mix_div = 2;
 	uint8_t div_buf = 0;
 	uint8_t div_num = 0;
@@ -442,25 +466,24 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	uint8_t refdiv2 = 0;
 	uint8_t ni, si, nint, vco_fine_tune, val;
 	uint8_t data[5];
+	uint8_t regs[7];
 
 	/* Frequency in kHz */
 	freq_khz = (freq + 500) / 1000;
 	pll_ref = priv->cfg->xtal;
-	pll_ref_khz = (priv->cfg->xtal + 500) / 1000;
-
-	rc = r82xx_write_reg_mask(priv, 0x10, refdiv2, 0x10);
-	if (rc < 0)
-		return rc;
 
 	/* set pll autotune = 128kHz */
 	rc = r82xx_write_reg_mask(priv, 0x1a, 0x00, 0x0c);
 	if (rc < 0)
 		return rc;
 
+	/* regs 0x10 to 0x16 */
+	memcpy(regs, &priv->regs[0x10 - REG_SHADOW_START], 7);
+
+	regs[0] = mask_reg8(regs[0], refdiv2, 0x10);
+
 	/* set VCO current = 100 */
-	rc = r82xx_write_reg_mask(priv, 0x12, 0x80, 0xe0);
-	if (rc < 0)
-		return rc;
+	regs[2] = mask_reg8(regs[2], 0x80, 0xe0);
 
 	/* Calculate divider */
 	while (mix_div <= 64) {
@@ -490,13 +513,27 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	else if (vco_fine_tune < vco_power_ref)
 		div_num = div_num + 1;
 
-	rc = r82xx_write_reg_mask(priv, 0x10, div_num << 5, 0xe0);
-	if (rc < 0)
-		return rc;
+	regs[0] = mask_reg8(regs[0], div_num << 5, 0xe0);
 
 	vco_freq = (uint64_t)freq * (uint64_t)mix_div;
-	nint = vco_freq / (2 * pll_ref);
-	vco_fra = (vco_freq - 2 * pll_ref * nint) / 1000;
+
+	/* We want to approximate:
+	 *  vco_freq / (2 * pll_ref)
+	 *
+	 * in the form:
+	 *  nint + sdm/65536
+	 *
+	 * where nint,sdm are integers and 0 < nint, 0 <= sdm < 65536
+	 *
+	 * Scaling to fixed point and rounding:
+	 *
+	 *  vco_div = 65536*(nint + sdm/65536) = int( 0.5 + 65536 * vco_freq / (2 * pll_ref) )
+	 *  vco_div = 65536*nint + sdm         = int( (pll_ref + 65536 * vco_freq) / (2 * pll_ref) )
+	 */
+
+	vco_div = (pll_ref + 65536 * vco_freq) / (2 * pll_ref);
+	nint = (uint32_t) (vco_div / 65536);
+	sdm = (uint32_t) (vco_div % 65536);
 
 	if (nint > ((128 / vco_power_ref) - 1)) {
 		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
@@ -506,35 +543,20 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	ni = (nint - 13) / 4;
 	si = nint - 4 * ni - 13;
 
-	rc = r82xx_write_reg(priv, 0x14, ni + (si << 6));
-	if (rc < 0)
-		return rc;
+	regs[4] = ni + (si << 6);
 
 	/* pw_sdm */
-	if (!vco_fra)
+	if (sdm == 0)
 		val = 0x08;
 	else
 		val = 0x00;
 
-	rc = r82xx_write_reg_mask(priv, 0x12, val, 0x08);
-	if (rc < 0)
-		return rc;
+	regs[2] = mask_reg8(regs[2], val, 0x08);
 
-	/* sdm calculator */
-	while (vco_fra > 1) {
-		if (vco_fra > (2 * pll_ref_khz / n_sdm)) {
-			sdm = sdm + 32768 / (n_sdm / 2);
-			vco_fra = vco_fra - 2 * pll_ref_khz / n_sdm;
-			if (n_sdm >= 0x8000)
-				break;
-		}
-		n_sdm <<= 1;
-	}
+	regs[5] = sdm & 0xff;
+	regs[6] = sdm >> 8;
 
-	rc = r82xx_write_reg(priv, 0x16, sdm >> 8);
-	if (rc < 0)
-		return rc;
-	rc = r82xx_write_reg(priv, 0x15, sdm & 0xff);
+	rc = r82xx_write(priv, 0x10, regs, 7);
 	if (rc < 0)
 		return rc;
 
@@ -1317,6 +1339,7 @@ int r82xx_init(struct r82xx_priv *priv)
 	priv->xtal_cap_sel = XTAL_HIGH_CAP_0P;
 
 	/* Initialize registers */
+	memset(priv->regs, 0, NUM_REGS);
 	rc = r82xx_write(priv, 0x05,
 			 r82xx_init_array, sizeof(r82xx_init_array));
 
