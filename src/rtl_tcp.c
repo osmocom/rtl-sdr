@@ -102,7 +102,7 @@ void usage(void)
 	printf("\t[-s samplerate in Hz (default: %d Hz)]\n", DEFAULT_SAMPLE_RATE_HZ);
 	printf("\t[-b number of buffers (default: 15, set by library)]\n");
 	printf("\t[-n max number of linked list buffers to keep (default: %d)]\n", DEFAULT_MAX_NUM_BUFFERS);
-	printf("\t[-d device index (default: 0)]\n");
+	printf("\t[-d device index or serial (default: 0)]\n");
 	printf("\t[-P ppm_error (default: 0)]\n");
 	printf("\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n");
 	printf("\t[-D enable direct sampling (default: off)]\n");
