@@ -29,7 +29,7 @@ target_include_directories(rtlsdr PUBLIC
   )
 set_target_properties(rtlsdr PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
 set_target_properties(rtlsdr PROPERTIES OUTPUT_NAME rtlsdr)
-set_target_properties(rtlsdr PROPERTIES SOVERSION ${MAJOR_VERSION})
+set_target_properties(rtlsdr PROPERTIES SOVERSION 0)
 set_target_properties(rtlsdr PROPERTIES VERSION ${LIBVER})
 generate_export_header(rtlsdr)
 
