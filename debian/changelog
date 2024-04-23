@@ -1,3 +1,34 @@
+rtl-sdr (2.0.2) unstable; urgency=medium
+
+  [ Mikael Falkvidd ]
+  * Fix small typo in rtl_sdr man page
+
+  [ Clayton Smith ]
+  * Use library paths from pkg-config
+  * Only use LIBUSB_LINK_LIBRARIES if it exists
+
+  [ hayati ayguen ]
+  * improve CLI usage docs: '-d' also accepts serial
+
+  [ Oliver Jowett ]
+  * r82xx: improve tuner precision
+
+  [ Sultan Qasim Khan ]
+  * r82xx: avoid redundant register writes for speed
+  * r82xx: batch register writes for tuning
+
+  [ Ethan Halsall ]
+  * fix: set fc0012 gain to low on init
+  * fix: round gain input to nearest value
+
+  [ Harald Welte ]
+  * Add funding link to github mirror
+
+  [ Steve Markgraf ]
+  * lib: set SOVERSION back to 0
+
+ -- Oliver Smith <osmith@sysmocom.de>  Tue, 23 Apr 2024 11:40:18 +0200
+
 rtl-sdr (2.0.1) unstable; urgency=medium
 
   * debian/changelog: update for 2.0.0 and 2.0.1
