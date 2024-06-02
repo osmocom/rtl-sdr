@@ -116,7 +116,7 @@ int verbose_gain_set(rtlsdr_dev_t *dev, int gain);
  * Set the frequency correction value for the device and report status on stderr.
  *
  * \param dev the device handle given by rtlsdr_open()
- * \param ppm_error frequency in Hz
+ * \param ppm_error correction value in parts per million (ppm)
  * \return 0 on success
  */
 
@@ -126,7 +126,7 @@ int verbose_ppm_set(rtlsdr_dev_t *dev, int ppm_error);
  * Set the frequency correction value for the device and report status on stderr.
  *
  * \param dev the device handle given by rtlsdr_open()
- * \param bandwidth correction value in parts per million (ppm)
+ * \param bandwidth frequency in Hz
  * \return 0 on success
  */
 
