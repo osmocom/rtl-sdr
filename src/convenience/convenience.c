@@ -147,7 +147,7 @@ int verbose_set_frequency(rtlsdr_dev_t *dev, uint32_t frequency)
 	if (r < 0) {
 		fprintf(stderr, "WARNING: Failed to set center freq.\n");
 	} else {
-		fprintf(stderr, "Tuned to %u Hz.\n", frequency);
+		fprintf(stderr, "Tuned to %u Hz.\n", rtlsdr_get_center_freq(dev));
 	}
 	return r;
 }
@@ -159,7 +159,7 @@ int verbose_set_sample_rate(rtlsdr_dev_t *dev, uint32_t samp_rate)
 	if (r < 0) {
 		fprintf(stderr, "WARNING: Failed to set sample rate.\n");
 	} else {
-		fprintf(stderr, "Sampling at %u S/s.\n", samp_rate);
+		fprintf(stderr, "Sampling at %u S/s.\n", rtlsdr_get_sample_rate(dev));
 	}
 	return r;
 }
@@ -217,7 +217,7 @@ int verbose_gain_set(rtlsdr_dev_t *dev, int gain)
 	if (r != 0) {
 		fprintf(stderr, "WARNING: Failed to set tuner gain.\n");
 	} else {
-		fprintf(stderr, "Tuner gain set to %0.2f dB.\n", gain/10.0);
+		fprintf(stderr, "Tuner gain set to %f dB.\n", 0.1*rtlsdr_get_tuner_gain(dev));
 	}
 	return r;
 }
@@ -232,6 +232,18 @@ int verbose_ppm_set(rtlsdr_dev_t *dev, int ppm_error)
 		fprintf(stderr, "WARNING: Failed to set ppm error.\n");
 	} else {
 		fprintf(stderr, "Tuner error set to %i ppm.\n", ppm_error);
+	}
+	return r;
+}
+
+int verbose_bandwidth_set(rtlsdr_dev_t *dev, uint32_t bandwidth)
+{
+	int r;
+	r = rtlsdr_set_tuner_bandwidth(dev, bandwidth);
+	if (r < 0) {
+		fprintf(stderr, "WARNING: Failed to set bandwidth.\n");
+	} else {
+		fprintf(stderr, "Bandwidth set to %u Hz.\n", bandwidth);
 	}
 	return r;
 }
